@@ -1,2 +1,2 @@
-import LoginScreen from './login';
-export default LoginScreen;
+import Map from './map';
+export default Map;

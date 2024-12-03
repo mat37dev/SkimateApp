@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.mat37dev.SkimateApp"
     },
     "web": {
       "bundler": "metro",
@@ -24,6 +25,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox",
+          "RNMapboxMapsDownloadToken": "sk.eyJ1IjoibWF0MzdkZXYiLCJhIjoiY200ODZpNnp0MGdxbjJscXgzd24zaWx5ZSJ9.PJNrzYIfKJAUDq-jAlglBQ"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -36,6 +44,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5642594b-cf85-4c67-ada9-332ab7736d16"
+      }
     }
   }
 }
