@@ -17,6 +17,50 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function LoginScreen() {
     const navigation = useNavigation();
 
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [Error, setError] = useState('');
+
+    const handleLogin = async () => {
+
+        if (!email || !password) {
+            setError('Veuillez remplir tous les champs.');
+        }
+
+        const isEmailValid = (email)=>{
+            const regex = /^[a-z0-9]+@[a-z0-9]+\.[a-z0-9]+$/;
+            return regex.test(email)
+        }
+
+        if(!isEmailValid(email)){
+            setError('Veuillez entrer une adresse email valide.');
+        }
+
+        try{
+            const response = await axios.post('http://localhost:8000/api/login',{
+                email,
+                password,
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            if (response.status === 200) {
+                Alert.alert('Vous êtes connecté(e) avec succès.');
+                const token = response.data.token;
+                await AsyncStorage.setItem('token', token);
+                console.log(response.data.token);
+                navigation.navigate('dashboard')
+
+            }else {
+                setError("Identifiants invalide. Veuillez réessayer");
+            }
+        }catch(error){
+            console.log(error);
+            setError('Une erreur s\'est produite. Veuillez réessayer plus tard.');
+        }
+    }
+
     return (
         <View style={styles.LoginContainer}>
             <ImageBackground
@@ -31,6 +75,8 @@ export default function LoginScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Email"
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
                             placeholderTextColor="#000000"
                         />
                     </View>
@@ -39,11 +85,13 @@ export default function LoginScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Mot de passe"
+                            value={password}
+                            onChangeText={setPassword}
                             placeholderTextColor="#000000"
                             secureTextEntry
                         />
                     </View>
-                    <TouchableOpacity onPress={()=> navigation.navigate('dashboard')} style={styles.button}>
+                    <TouchableOpacity onPress={handleLogin} style={styles.button}>
                         <Text style={styles.buttonText}>se connecter</Text>
                     </TouchableOpacity>
 
