@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -6,38 +6,38 @@ import {
     TouchableOpacity,
     StyleSheet,
     ImageBackground,
-    ScrollView, Alert,
+    Alert,
 } from 'react-native';
-
-import axios from "axios";
-
-import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter, Link } from 'expo-router';
 
-export default function LoginScreen() {
-    const navigation = useNavigation();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [Error, setError] = useState('');
+const LoginScreen: React.FC = () => {
+    const router = useRouter();
 
-    const handleLogin = async () => {
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [error, setError] = useState<string>('');
 
+    const handleLogin = async (): Promise<void> => {
         if (!email || !password) {
             setError('Veuillez remplir tous les champs.');
+            return;
         }
 
-        const isEmailValid = (email)=>{
-            const regex = /^[a-z0-9]+@[a-z0-9]+\.[a-z0-9]+$/;
-            return regex.test(email)
-        }
+        const isEmailValid = (input: string): boolean => {
+            const regex = /^[a-z0-9]+@[a-z0-9]+\.[a-z0-9]+$/i;
+            return regex.test(input);
+        };
 
-        if(!isEmailValid(email)){
+        if (!isEmailValid(email)) {
             setError('Veuillez entrer une adresse email valide.');
+            return;
         }
 
-        try{
-            const response = await axios.post('http://localhost:8000/api/login',{
+        try {
+            const response = await axios.post('http://localhost:8000/api/login', {
                 email,
                 password,
             }, {
@@ -45,21 +45,21 @@ export default function LoginScreen() {
                     'Content-Type': 'application/json',
                 }
             });
+
             if (response.status === 200) {
                 Alert.alert('Vous êtes connecté(e) avec succès.');
                 const token = response.data.token;
                 await AsyncStorage.setItem('token', token);
                 console.log(response.data.token);
-                navigation.navigate('dashboard')
-
-            }else {
-                setError("Identifiants invalide. Veuillez réessayer");
+                router.push('/dashboard');
+            } else {
+                setError("Identifiants invalides. Veuillez réessayer.");
             }
-        }catch(error){
-            console.log(error);
+        } catch (err) {
+            console.log(err);
             setError('Une erreur s\'est produite. Veuillez réessayer plus tard.');
         }
-    }
+    };
 
     return (
         <View style={styles.LoginContainer}>
@@ -68,8 +68,12 @@ export default function LoginScreen() {
                 style={styles.background}
                 imageStyle={styles.backgroundImage}
             >
-                <View contentContainerStyle={styles.container}>
+                <View style={styles.container}>
                     <Text style={styles.logo}>SkiMate</Text>
+
+                    {error ? (
+                        <Text style={{ color: 'red', marginBottom: 20 }}>{error}</Text>
+                    ) : null}
 
                     <View style={styles.inputContainer}>
                         <TextInput
@@ -78,6 +82,7 @@ export default function LoginScreen() {
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             placeholderTextColor="#000000"
+                            value={email}
                         />
                     </View>
 
@@ -92,13 +97,15 @@ export default function LoginScreen() {
                         />
                     </View>
                     <TouchableOpacity onPress={handleLogin} style={styles.button}>
-                        <Text style={styles.buttonText}>se connecter</Text>
+                        <Text style={styles.buttonText}>Se connecter</Text>
                     </TouchableOpacity>
 
                     <View style={styles.linksContainer}>
-                        <TouchableOpacity onPress={() => navigation.navigate('register')}>
-                            <Text style={styles.linkText}>S'inscrire</Text>
-                        </TouchableOpacity>
+                        <Link href="/register" asChild>
+                            <TouchableOpacity>
+                                <Text style={styles.linkText}>S'inscrire</Text>
+                            </TouchableOpacity>
+                        </Link>
                         <TouchableOpacity>
                             <Text style={styles.linkText}>Mot de passe oublié</Text>
                         </TouchableOpacity>
@@ -107,7 +114,7 @@ export default function LoginScreen() {
             </ImageBackground>
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     LoginContainer: {
@@ -166,3 +173,5 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
 });
+
+export default LoginScreen;

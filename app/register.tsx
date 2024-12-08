@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -8,68 +8,82 @@ import {
     ImageBackground,
     Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from 'expo-router';
 
-export default function SignupScreen() {
-    const navigation = useNavigation();
+const SignupScreen: React.FC = () => {
+    const router = useRouter();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [telephone, setTelephone] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    // const [skiLevel, setSkiLevel] = useState('');
-    const [name, setName] = useState('');
-    const [lastname, setLastname] = useState('');
-    const [error, setError] = useState('');
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [telephone, setTelephone] = useState<string>('');
+    const [confirmPassword, setConfirmPassword] = useState<string>('');
+    // const [skiLevel, setSkiLevel] = useState<string>('');
+    const [name, setName] = useState<string>('');
+    const [lastname, setLastname] = useState<string>('');
+    const [error, setError] = useState<string>('');
 
-    const handleRegister = async () => {
-
+    const handleRegister = async (): Promise<void> => {
         if (!email || !password || !telephone || !name || !lastname || !confirmPassword) {
             setError('Veuillez remplir tous les champs.');
             return;
         }
 
-    try{
-        const payload ={
-            email:email,
-            firstName:name,
-            lastName:lastname,
-            password:password,
-            confirmPassword:confirmPassword,
-            phoneNumber:telephone,
+        const payload = {
+            email: email,
+            firstName: name,
+            lastName: lastname,
+            password: password,
+            confirmPassword: confirmPassword,
+            phoneNumber: telephone,
             // skiLevel,
-        }
-        const response = await axios.post('http://localhost:8000/api/register',
-            payload,{
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        }
-        );
-        if (response.status === 200 || 201) {
-            Alert.alert('Vous êtes connecté(e) avec succès.');
-            const token = response.data.token;
-            await AsyncStorage.setItem('token', token);
-            console.log('Response received:', response);
-            console.log(response.request);
-            navigation.navigate('dashboard')
-        }
-    }catch(error){
-            if(error.response){
-                console.error(error.data);
-                setError(error.response.data.errors);
-                if (error.response.data.errors.email){
-                    setError(error.response.data.errors.email);
+        };
+
+        try {
+            const response = await axios.post('http://localhost:8000/api/register', payload, {
+                headers: {
+                    'Content-Type': 'application/json',
                 }
-            }else if(error.request){
-                console.error(error.data);
-                setError('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                Alert.alert('Vous êtes inscrit(e) avec succès.');
+                const token = response.data.token;
+                await AsyncStorage.setItem('token', token);
+                console.log('Response received:', response);
+                router.push('/dashboard');
+            } else {
+                setError("Erreur inattendue. Veuillez réessayer.");
             }
 
+        } catch (err: any) {
+            // Gestion des erreurs axios
+            if (err.response) {
+                console.error(err.response.data);
+                // On suppose que err.response.data.errors est un objet
+                // On prend la première erreur si elle existe
+                if (err.response.data.errors && typeof err.response.data.errors === 'object') {
+                    // On essaie de récupérer un message d'erreur plus précis
+                    const errors = err.response.data.errors;
+                    if (errors.email) {
+                        setError(errors.email as string);
+                    } else {
+                        setError('Une erreur est survenue lors de l’inscription.');
+                    }
+                } else {
+                    setError('Une erreur est survenue lors de l’inscription.');
+                }
+            } else if (err.request) {
+                console.error(err.request);
+                setError('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+            } else {
+                console.error('Erreur', err.message);
+                setError('Une erreur s\'est produite. Veuillez réessayer plus tard.');
+            }
         }
-    }
+    };
+
     return (
         <View style={styles.container}>
             <ImageBackground
@@ -77,13 +91,9 @@ export default function SignupScreen() {
                 style={styles.background}
                 imageStyle={styles.backgroundImage}
             >
-                <View contentContainerStyle={styles.viewContainer}>
+                <View style={styles.viewContainer}>
                     <View style={styles.errorContainer}>
-                        {error && (
-                            <Text style={styles.error}>
-                                {error}
-                            </Text>
-                        )}
+                        {error ? <Text style={styles.error}>{error}</Text> : null}
                     </View>
                     <Text style={styles.logo}>SkiMate</Text>
                     <View style={styles.row}>
@@ -106,6 +116,7 @@ export default function SignupScreen() {
                             placeholder="Email"
                             onChangeText={setEmail}
                             placeholderTextColor="#FFFFFF"
+                            keyboardType="email-address"
                         />
                     </View>
                     <View style={styles.inputContainer}>
@@ -135,22 +146,24 @@ export default function SignupScreen() {
                             secureTextEntry
                         />
                     </View>
-                    {/*<View style={styles.inputContainer}>*/}
-                    {/*    <TextInput*/}
-                    {/*        style={styles.input}*/}
-                    {/*        placeholder="Niveau de ski"*/}
-                    {/*        onChangeText={setSkiLevel}*/}
-                    {/*        placeholderTextColor="#FFFFFF"*/}
-                    {/*    />*/}
-                    {/*</View>*/}
+                    {/*
+                      <View style={styles.inputContainer}>
+                          <TextInput
+                              style={styles.input}
+                              placeholder="Niveau de ski"
+                              onChangeText={setSkiLevel}
+                              placeholderTextColor="#FFFFFF"
+                          />
+                      </View>
+                    */}
                     <TouchableOpacity onPress={handleRegister} style={styles.button}>
-                        <Text  style={styles.buttonText}>S'inscrire</Text>
+                        <Text style={styles.buttonText}>S'inscrire</Text>
                     </TouchableOpacity>
                 </View>
             </ImageBackground>
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -207,13 +220,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    errorContainer:{
+    errorContainer: {
+        marginBottom: 20,
+    },
+    error: {
         color: 'red',
-        backgroundColor: '#ffe5e5',
-        padding: 10,
-        borderRadius: 5,
         textAlign: 'center',
-        margin: 20,
     }
 });
 
+export default SignupScreen;
