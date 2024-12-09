@@ -11,10 +11,17 @@ import {
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 
 const SignupScreen: React.FC = () => {
-    const router = useRouter();
+    let API_URL = 'http://localhost:3000/';
+    if (!Constants.expoConfig || !Constants.expoConfig.extra) {
+        console.warn("Les variables d'environnement ne sont pas accessibles.");
+    } else {
+        API_URL = Constants.expoConfig.extra.API_URL;
+    }
 
+    const router = useRouter();
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [telephone, setTelephone] = useState<string>('');
@@ -41,7 +48,7 @@ const SignupScreen: React.FC = () => {
         };
 
         try {
-            const response = await axios.post('http://localhost:8000/api/register', payload, {
+            const response = await axios.post(`${API_URL}/api/register`, payload, {
                 headers: {
                     'Content-Type': 'application/json',
                 }
