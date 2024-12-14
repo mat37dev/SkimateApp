@@ -9,6 +9,9 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 // Empêche l'écran de splash de disparaître avant le chargement des ressources
+import NavBar from '../components/NavBar';
+import {StyleSheet, View} from "react-native";
+
 SplashScreen.preventAutoHideAsync();
 
 export default function Layout() {
@@ -30,8 +33,17 @@ export default function Layout() {
 
   return (
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Slot />
+        <View style={styles.container}>
+          <Slot />
+          <NavBar />
+        </View>
         <StatusBar style="auto" />
       </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
