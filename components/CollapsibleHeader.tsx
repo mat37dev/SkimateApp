@@ -5,29 +5,27 @@ import {
     StyleSheet,
     StyleProp,
     ViewStyle,
-    TextStyle, Platform
+    Platform,
+    TouchableOpacity,
+    View,
+    Image,
+    ImageSourcePropType,
 } from "react-native";
-import {useThemeColor} from "@/hooks/useThemeColor";
-
+import { useThemeColor } from "@/hooks/useThemeColor";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { API_URL } from "@/api/apiClient";
 
 type CollapsibleHeaderProps = {
-    /** Valeur animée (scrollY) pour animer la hauteur */
     scrollY: Animated.Value;
-    /** Hauteur max du header */
     maxHeight?: number;
-    /** Hauteur min du header */
     minHeight?: number;
-    /** Taille de police max */
     maxFontSize?: number;
-    /** Taille de police min */
     minFontSize?: number;
-    minPaddingTop?: number;
-    maxPaddingTop?: number;
-    /** Texte du header */
     title?: string;
-    /** Style additionnel pour le container */
     containerStyle?: StyleProp<ViewStyle>;
-    /** Style additionnel pour le texte */
+    showBackButton?: boolean;
+    onBackPress?: () => void;
+    logo?: ImageSourcePropType | null;
 };
 
 export default function CollapsibleHeader({
@@ -37,32 +35,51 @@ export default function CollapsibleHeader({
                                               maxFontSize = 24,
                                               minFontSize = 18,
                                               title = "Mon Titre",
+                                              showBackButton = false,
+                                              onBackPress,
+                                              logo,
                                           }: CollapsibleHeaderProps) {
-    let textStyle = (useThemeColor({}, 'text'))
-    let containerStyle = (useThemeColor({}, 'background'));
-    // Interpolation de la hauteur
+    let textColor = useThemeColor({}, "text");
+    let bgColor = useThemeColor({}, "background");
+
+    // Interpolation de la hauteur et de la taille de police
     const headerHeight = scrollY.interpolate({
         inputRange: [0, 50],
         outputRange: [maxHeight, minHeight],
         extrapolate: "clamp",
     });
 
-    // Interpolation de la taille de police
     const titleFontSize = scrollY.interpolate({
         inputRange: [0, 50],
         outputRange: [maxFontSize, minFontSize],
         extrapolate: "clamp",
     });
 
-    if(Platform.OS === "web" ){
-        containerStyle= "#f2f4f7";
-        textStyle =  "#11181C";
+    if (Platform.OS === "web") {
+        bgColor = "#f2f4f7";
+        textColor = "#11181C";
     }
+
     return (
-        <Animated.View style={[styles.header, {backgroundColor: containerStyle}, {height: headerHeight}, ]}>
-            <Animated.Text style={[styles.title, {color: textStyle}, {fontSize: titleFontSize}]}>
-                {title}
-            </Animated.Text>
+        <Animated.View style={[styles.header, { backgroundColor: bgColor, height: headerHeight }]}>
+            {showBackButton && (
+                <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={textColor} />
+                </TouchableOpacity>
+            )}
+            {/* Conteneur pour le logo et le titre */}
+            <View style={styles.titleContainer}>
+                {logo && (
+                    <Image
+                        source={{ uri: API_URL + logo }}
+                        style={styles.logo}
+                        resizeMode="contain"
+                    />
+                )}
+                <Animated.Text style={[styles.title, { color: textColor, fontSize: titleFontSize }]}>
+                    {title}
+                </Animated.Text>
+            </View>
         </Animated.View>
     );
 }
@@ -70,12 +87,24 @@ export default function CollapsibleHeader({
 const styles = StyleSheet.create({
     header: {
         width: "100%",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        // si besoin, ajout d'élévation ou shadow
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+    },
+    backButton: {
+        marginRight: 10,
+    },
+    titleContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    logo: {
+        width: 30,
+        height: 30,
+        marginRight: 8,
     },
     title: {
         fontWeight: "bold",
-        marginLeft: 25,
+        flexShrink: 1,
     },
 });

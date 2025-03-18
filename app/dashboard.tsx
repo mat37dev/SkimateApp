@@ -5,7 +5,7 @@ import {
     View,
     Text,
     TextInput,
-    TouchableOpacity, Button
+    TouchableOpacity, ImageSourcePropType
 } from "react-native";
 import {useThemeColor} from "@/hooks/useThemeColor";
 import CollapsibleHeader from "../components/CollapsibleHeader";
@@ -16,33 +16,24 @@ import apiClient from "@/api/apiClient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {WeatherCard} from "@/components/DashboardCards/WeatherCard";
 import {CardContact} from "@/components/DashboardCards/CardContact";
-
-
-/**
- * Fonction utilitaire : Convertit le code météo en (description, icône)
- */
-function getWeatherInfo(code: string): { label: string; icon: string } {
-    switch (code) {
-        case "ensoleille":
-            return {label: 'Clair', icon: 'sunny'};
-        case "nuageux":
-            return {label: 'Nuageux', icon: 'cloudy'};
-        case "brouillard":
-            return {label: 'Brouillard', icon: 'weather-fog'};
-        case "pluvieux":
-            return {label: 'Pluvieux/Orage', icon: 'rainy'};
-        case "neigeux":
-            return {label: 'Neigeux', icon: 'snow'};
-        default:
-            return {label: 'Inconnu', icon: 'help-circle-outline'};
-    }
-}
+import {StationStatsCard} from "@/components/DashboardCards/StationStatsCard";
+import {ListDomainStationsCard} from "@/components/DashboardCards/ListDomainStationsCard";
+import {StationListItem} from "@/components/StationListItem";
+import CommentCard from "@/components/DashboardCards/CommentCard";
 
 interface StationInfo {
     name: string;
     domain: string;
     website: string;
     emergencyPhone: string;
+    altitudeMin?: number | null;
+    altitudeMax?: number | null;
+    distanceSlope?: number | null;
+    countEasy?: number | null;
+    countIntermediate?: number | null;
+    countAdvanced?: number | null;
+    countExpert?: number | null;
+    logo?: ImageSourcePropType | null;
 }
 
 export default function DashboardScreen() {
@@ -67,16 +58,11 @@ export default function DashboardScreen() {
     const [weatherToday, setWeatherToday] = useState<any | null>(null);
     const [weatherTomorrow, setWeatherTomorrow] = useState<any | null>(null);
 
-// Pour gérer un éventuel chargement en cours
-    const [loadingStation, setLoadingStation] = useState(false);
-
     useEffect(() => {
         if (!selectedStation) return; // pas de station => pas de requête
 
         (async () => {
             try {
-                setLoadingStation(true);
-
                 // 1) Récup info station
                 const infoRes = await apiClient.post('/station/information', {
                     osmId: selectedStation,
@@ -92,8 +78,6 @@ export default function DashboardScreen() {
                 }
             } catch (err) {
                 console.warn("Erreur chargement station/weather:", err);
-            } finally {
-                setLoadingStation(false);
             }
         })();
     }, [selectedStation]);
@@ -137,13 +121,13 @@ export default function DashboardScreen() {
 
     // Fonction quand on clique sur une station proposée
     const handleSelectStation = async (stationId: string) => {
-        console.log(stationId);
         await AsyncStorage.setItem('selected_station', stationId);
         setSelectedStation(stationId);
     };
 
     const handleReset = async () => {
         await AsyncStorage.removeItem('selected_station');
+        setSelectedStation(null);
     }
 
     // — Rendu : si on n'a PAS de station sélectionnée → affichage "recherche + favoris"
@@ -151,6 +135,7 @@ export default function DashboardScreen() {
         return (
             <View style={[styles.container, {backgroundColor}]}>
                 <CollapsibleHeader scrollY={scrollY} title="Stations"/>
+
 
                 <Animated.ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -175,15 +160,12 @@ export default function DashboardScreen() {
                             {searchResults.length > 0 && (
                                 <View style={[styles.resultsContainer, {backgroundColor: backgroundColorCard}]}>
                                     {searchResults.map((station) => (
-                                        <TouchableOpacity
+                                        <StationListItem
                                             key={station.osmId}
-                                            style={styles.resultItem}
+                                            logo={station.logo || null}
+                                            text={station.name}
                                             onPress={() => handleSelectStation(station.osmId)}
-                                        >
-                                            <Text style={[styles.resultItemText, {color: textColor}]}>
-                                                {station.name}
-                                            </Text>
-                                        </TouchableOpacity>
+                                        />
                                     ))}
                                 </View>
                             )}
@@ -204,7 +186,7 @@ export default function DashboardScreen() {
     // -- Sinon, si on a une station => on affiche la version "header collapsant" + cards
     return (
         <View style={[styles.container, {backgroundColor}]}>
-            <CollapsibleHeader scrollY={scrollY} title={stationInfo?.name}/>
+            <CollapsibleHeader scrollY={scrollY} title={stationInfo?.name} showBackButton={true} onBackPress={handleReset} logo={stationInfo?.logo}/>
             <Animated.ScrollView
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event(
@@ -233,6 +215,19 @@ export default function DashboardScreen() {
                         weatherToday={weatherToday}
                         weatherTomorrow={weatherTomorrow}
                     />
+                    {stationInfo && <StationStatsCard stationInfo={stationInfo} />}
+                    {stationInfo && stationInfo.domain && (
+                        <ListDomainStationsCard
+                            domain={stationInfo.domain}
+                            onSelectStation={(osmId: string) => {
+                                AsyncStorage.setItem('selected_station', osmId);
+                                setSelectedStation(osmId);
+                            }}
+                            selectedStationId={selectedStation}
+                        />
+                    )}
+
+                    <CommentCard osmId={selectedStation} />
                     <CardContact website={stationInfo?.website} emergencyPhone={stationInfo?.emergencyPhone} />
                 </View>
             </Animated.ScrollView>

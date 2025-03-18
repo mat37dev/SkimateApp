@@ -14,6 +14,8 @@ import {Link, useRouter} from 'expo-router';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {TextStyles} from "@/constants/TextStyles";
+import {useThemeColor} from "@/hooks/useThemeColor";
 
 const SignupScreen: React.FC = () => {
     let API_URL = 'http://localhost:3000/';
@@ -33,11 +35,21 @@ const SignupScreen: React.FC = () => {
     const [lastname, setLastname] = useState<string>('');
     const [error, setError] = useState<string>('');
 
+    const errorTextColor = useThemeColor({}, 'errorText');
+
     const handleRegister = async (): Promise<void> => {
         if (!email || !password || !telephone || !name || !lastname || !confirmPassword) {
             setError('Veuillez remplir tous les champs.');
             return;
         }
+        if (telephone) {
+            const regex = /^(\+33|0)[1-9](\d{2}){4}$/;
+            if (!regex.test(telephone)) {
+                setError('Numéro de téléphone invalide');
+                return;
+            }
+        }
+
 
         const payload = {
             email: email,
@@ -46,7 +58,6 @@ const SignupScreen: React.FC = () => {
             password: password,
             confirmPassword: confirmPassword,
             phoneNumber: telephone,
-            // skiLevel,
         };
 
         try {
@@ -77,21 +88,13 @@ const SignupScreen: React.FC = () => {
         } catch (err: any) {
             // Gestion des erreurs axios
             if (err.response) {
-                console.error(err.response.data);
-                // On suppose que err.response.data.errors est un objet
-                // On prend la première erreur si elle existe
-                if (err.response.data.errors && typeof err.response.data.errors === 'object') {
-                    // On essaie de récupérer un message d'erreur plus précis
-                    const errors = err.response.data.errors;
-                    if (errors.email) {
-                        setError(errors.email as string);
-                    } else {
-                        setError('Une erreur est survenue lors de l’inscription.');
-                    }
-                } else {
-                    setError('Une erreur est survenue lors de l’inscription.');
+                const errors = err.response.data.errors && err.response.data.errors.email;
+                console.log(err.response.data.errors)
+                if (errors) {
+                    setError(errors || 'Erreur inattendue');
                 }
-            } else if (err.request) {
+            }
+            else if (err.request) {
                 console.error(err.request);
                 setError('Impossible de se connecter au serveur. Vérifiez votre connexion.');
             } else {
@@ -109,9 +112,7 @@ const SignupScreen: React.FC = () => {
                 imageStyle={styles.backgroundImage}
             >
                 <View style={styles.viewContainer}>
-                    <View style={styles.errorContainer}>
-                        {error ? <Text style={styles.error}>{error}</Text> : null}
-                    </View>
+                    <Text style={[{ color: errorTextColor }, TextStyles.errorText]}>{error}</Text>
                     <Text style={styles.logo}>SkiMate</Text>
                     <View style={styles.row}>
                         <TextInput
@@ -242,13 +243,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    errorContainer: {
-        marginBottom: 20,
-    },
-    error: {
-        color: 'red',
-        textAlign: 'center',
-    }
 });
 
 export default SignupScreen;

@@ -9,8 +9,12 @@ import {
 } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Link } from 'expo-router';
+import {useThemeColor} from "@/hooks/useThemeColor";
 
 export default function Statistics() {
+
+    const textColor = useThemeColor({}, 'tint');
+
     return (
         <View style={styles.mainContainer}>
             <ImageBackground
@@ -67,7 +71,7 @@ export default function Statistics() {
                     {/* Lien pour revenir au dashboard si tu le souhaites */}
                     <Link href="/dashboard" asChild>
                         <TouchableOpacity style={{ marginTop: 20 }}>
-                            <Text style={{ color: 'blue', textAlign: 'center' }}>Retour au Dashboard</Text>
+                            <Text style={{ color: textColor, textAlign: 'center' }}>Retour au Dashboard</Text>
                         </TouchableOpacity>
                     </Link>
                 </ScrollView>

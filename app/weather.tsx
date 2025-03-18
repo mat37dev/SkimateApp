@@ -1,322 +1,295 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, ImageBackground, Dimensions } from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ActivityIndicator,
+    ImageBackground,
+    Image, Animated,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '@/api/apiClient';
-import Feather from '@expo/vector-icons/Feather';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import CollapsibleHeader from "@/components/CollapsibleHeader";
+import {router} from "expo-router";
 
-const { width } = Dimensions.get('window');
+
+function getWeatherImage(weatherCode: any): any {
+    const code = Array.isArray(weatherCode) ? weatherCode[1]?.toLowerCase() : '';
+    switch (code) {
+        case 'ensoleille':
+            return require('@/assets/weatherIcons/sunny.png');
+        case 'nuageux':
+            return require('@/assets/weatherIcons/cloudy.png');
+        case 'brouillard':
+            return require('@/assets/weatherIcons/fog.png');
+        case 'pluvieux':
+            return require('@/assets/weatherIcons/rainy.png');
+        case 'neigeux':
+            return require('@/assets/weatherIcons/snow.png');
+        default:
+            return require('@/assets/weatherIcons/inconnue.png');
+    }
+}
 
 const WeatherScreen: React.FC = () => {
-
-    const [forecast, setForecast] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
+    const scrollY = useRef(new Animated.Value(0)).current;
+    const [forecast, setForecast] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-    const [today, setToday] = useState<Date | null>(null);
-    const currentDay = new Date().toISOString().split('T')[0]
-    const currentHours = new Date().getHours()
-    const isMorning = currentHours <=  12;
+    const [error, setError] = useState<string | null>(null);
+    const [stationId, setStationId] = useState<string | null>(null);
+    const [stationName, setStationName] = useState<string | null>(null);
 
-    const getWeatherIcon = (weather: string) => {
-        switch (weather.toLowerCase()) {
-            case 'ensoleillé':
-                return <Feather name="sun" size={20} color="#fcf4a4" />;
-            case 'nuageux':
-                return <FontAwesome5 name="cloud" size={20} color="#003566" />;
-            case 'pluvieux':
-                return <Ionicons name="rainy" size={20} color="#003566" />;
-            case 'neigeux':
-                return <Ionicons name="snow" size={20} color="#003566" />;
-            case 'brouillard':
-                return <MaterialCommunityIcons name="weather-fog" size={20} color="#003566" />;
-            default:
-                return '';
-        }
-    };
+    const textColor = useThemeColor({}, 'text');
+    const backgroundColor = useThemeColor({}, 'background');
 
+    // Récupère la station sélectionnée depuis AsyncStorage
     useEffect(() => {
-        const fetchWeather = async () => {
-            const url = '/weather';
+        const fetchStationName = async () => {
             try {
-                const response = await apiClient.post(url, {
-                    location: "La Plagne"
-                });
-                if (response.data && response.data.forecasts && response.data.forecasts.length > 0) {
-                    const forecastData = response.data.forecasts
-                    const todayForecast = forecastData.find(forecast => forecast.day === currentDay)
-                    setToday(todayForecast)
-                    setForecast(forecastData);
+                const stored = await AsyncStorage.getItem('selected_station');
+                if (stored) {
+                    setStationId(stored);
                 } else {
-                    setError('Aucune donnée de prévision disponible.');
+                    setError("Aucune station sélectionnée.");
+                }
+            } catch (err) {
+                setError("Erreur lors de la récupération de la station.");
+            }
+        };
+        fetchStationName();
+    }, []);
+
+
+
+    // Appel API météo avec le nom de la station
+    useEffect(() => {
+        if (!stationId) return;
+
+        const fetchWeather = async () => {
+            try {
+                // Récupérer les informations de la station
+                const infoRes = await apiClient.post('/station/information', {
+                    osmId: stationId,
+                });
+
+                if (infoRes.data && infoRes.data.name) {
+                    setStationName(infoRes.data.name);
+                    const response = await apiClient.post('/weather', {
+                        location: infoRes.data.name,
+                    });
+                    if (response.data && response.data.forecasts && response.data.forecasts.length > 0) {
+                        setForecast(response.data.forecasts);
+                    } else {
+                        setError('Aucune donnée de prévision disponible.');
+                    }
                 }
             } catch (err: any) {
+                console.log(err);
                 setError('Impossible de charger les prévisions météo.');
-                console.log(err)
             } finally {
                 setLoading(false);
             }
         };
+
         fetchWeather();
-    }, []);
+    }, [stationId]);
+
+    if (loading) {
+        return (
+            <View style={[styles.loadingContainer, { backgroundColor }]}>
+                <ActivityIndicator size="large" color="#003566" />
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={[styles.loadingContainer, { backgroundColor }]}>
+                <Text style={[styles.errorText, { color: textColor }]}>{error}</Text>
+            </View>
+        );
+    }
+
+    const handleBack = () => {
+        router.replace("/dashboard");
+    }
 
     return (
         <ImageBackground
-            source={require("../assets/background/pexels-ryank-20042214.jpg")}
+            source={require('@/assets/background/pexels-ryank-20042214.jpg')}
             style={styles.background}
             imageStyle={styles.backgroundImage}
         >
-            <View style={styles.container}>
-                <View style={styles.containerTop}>
-                    <View>
-                        <Text style={styles.title}>Aujourd'hui</Text>
-                    </View>
-                    {today ? (
-                        <View style={styles.weatherContainer}>
-                            {isMorning ? (
-                                <View>
-                                    <Text style={styles.temperature}>{today.morning.temperature_2m}°C</Text>
-                                    <View style={styles.iconContainer}>
-                                        {getWeatherIcon(today.morning.weather_code?.[1] || '')}
-                                        <Text style={styles.weatherDescription}>{today.morning.weather_code?.[0]  || 'Donnée non disponibles'}</Text>
-                                    </View>
-                                </View>
-                            ) : (
-                                <View >
-                                    <Text style={styles.temperature}>{today.afternoon.temperature_2m}°C</Text>
-                                    <View style={styles.iconContainer}>
-                                        {getWeatherIcon(today.afternoon.weather_code?.[1]  || '')}
-                                        <Text style={styles.weatherDescription}>{today.afternoon.weather_code?.[0]  || 'Donnée non disponibles'}</Text>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    ) : (
-                        <ActivityIndicator size="small" color="#003566" />
-                    )}
-                </View>
+            <View style={[styles.container, { backgroundColor }]}>
+                {/* En-tête */}
+                <CollapsibleHeader scrollY={scrollY} title="Météos" showBackButton={true} onBackPress={handleBack}/>
 
-                <View style={styles.cardsContainer}>
-                    {today ? (
-                        <>
-                            <View style={styles.weatherCard}>
-                                <View style={styles.cardHeader}>
-                                    <Text style={styles.cardTitle}>Matin</Text>
-                                </View>
-                                <Text style={styles.cardTextTemp}> {today.morning.temperature_2m}°C</Text>
-                                <Text style={styles.cardText}>Vent: {today.morning.wind_speed_10m} km/h</Text>
-                            </View>
-                            <View style={styles.weatherCard}>
-                                <View style={styles.cardHeader}>
-                                    <Text style={styles.cardTitle}>Après-midi</Text>
-                                </View>
-                                <Text style={styles.cardTextTemp}>{today.afternoon.temperature_2m}°C</Text>
-                                <Text style={styles.cardText}>Vent: {today.afternoon.wind_speed_10m} km/h</Text>
-                            </View>
-                        </>
-                    ) : (
-                        <ActivityIndicator size="small" color="#003566" />
+                <Animated.ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    onScroll={Animated.event(
+                        [{nativeEvent: {contentOffset: {y: scrollY}}}],
+                        {useNativeDriver: false}
                     )}
-                </View>
-                <View style={styles.snowForecastCard}>
-                    <Text style={styles.title}>Condition de neige d'aujourd'hui</Text>
-                    {today ? (
-                        isMorning ? (
-                            <View style={styles.snowInfo}>
-                                <View>
-                                    <Text style={styles.cardTextSnow}> {today.morning.snowfall || 0}cm</Text>
-                                    <Text style={styles.snowfallInfoText}>Chute</Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.cardTextSnow}>{today.afternoon.snow_depth || 0}cm</Text>
-                                    <Text style={styles.snowfallInfoText || 0}>Profondeur</Text>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={styles.snowInfo}>
-                                <View>
-                                    <Text style={styles.cardTextSnow}> {today.afternoon.snowfall || 0}cm</Text>
-                                    <Text style={styles.snowfallInfoText}>Chute</Text>
-                                </View>
-                                <View>
-                                    <Text style={styles.cardTextSnow}>{today.afternoon.snow_depth || 0}cm</Text>
-                                    <Text style={styles.snowfallInfoText}>Profondeur</Text>
-                                </View>
-                            </View>
-                        )
-                    ) : loading ? (
-                        <ActivityIndicator size="small" color="#003566" />
-                    ) : (
-                        <Text style={styles.errorText}>{error}</Text>
-                    )}
-                </View>
-                <View style={styles.forecastCard}>
-                    {forecast ? (
-                        forecast.map((dayForecast, index) => {
-                            const date = new Date(dayForecast.day);
-                            return (
-                                <View style={styles.weekDayInfo} key={index}>
-                                    <View style={styles.weekDay}>
-                                        <Text style={styles.dayText}>{date.toLocaleDateString('fr-FR', { weekday: 'long' })} :</Text>
-                                        <Text>{dayForecast.morning?.temperature_2m}°C</Text>
-                                    </View>
-                                    <View style={styles.windSpeed}>
-                                        <MaterialCommunityIcons style={styles.weatherIcon} name="weather-windy" size={20} color="#003566" />
-                                        <Text>{dayForecast.morning?.wind_speed_10m} km/h</Text>
-                                    </View>
-                                    <View style={styles.snowfall}>
-                                        <Ionicons style={styles.weatherIcon} name="snow" size={20} color="#003566" />
-                                        <Text>{dayForecast.morning?.snowfall || 0} cm</Text>
+                    scrollEventThrottle={16}
+                >
+                    <Text style={[styles.headerTitle, {color: textColor}]}>Météo de la station:</Text>
+                    <Text style={[styles.headerTitle, {color: textColor}]}>{stationName}</Text>
+                    {forecast.map((dayForecast, index) => {
+                        const date = new Date(dayForecast.day);
+                        return (
+                            <View key={index} style={styles.dayContainer}>
+                                <Text style={[styles.dayTitle, { color: textColor }]}>
+                                    {date.toLocaleDateString('fr-FR', {
+                                        weekday: 'long',
+                                        day: 'numeric',
+                                        month: 'long',
+                                    })}
+                                </Text>
+                                {/* Affichage détaillé pour le matin */}
+                                <View style={styles.periodContainer}>
+                                    <Text style={[styles.periodTitle, { color: textColor }]}>Matin</Text>
+                                    <View style={styles.periodContent}>
+                                        <Image
+                                            source={getWeatherImage(dayForecast.morning.weather_code)}
+                                            style={styles.weatherImage}
+                                            resizeMode="contain"
+                                        />
+                                        <View style={styles.infoContainer}>
+                                            <Text style={[styles.temperature, { color: textColor }]}>
+                                                {dayForecast.morning.temperature_2m}°C
+                                            </Text>
+                                            <Text style={[styles.description, { color: textColor }]}>
+                                                {dayForecast.morning.weather_code[0]}
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Vent: {dayForecast.morning.wind_speed_10m} km/h
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Chute: {dayForecast.morning.snowfall || 0} cm
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Prof.: {Math.round(dayForecast.morning.snow_depth*100) || 0} cm
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
-                            );
-                        })
-                    ) : loading ? (
-                        <ActivityIndicator size="small" color="#003566" />
-                    ) : (
-                        <Text style={styles.errorText}>{error}</Text>
-                    )}
-                </View>
+                                {/* Affichage détaillé pour l'après-midi */}
+                                <View style={styles.periodContainer}>
+                                    <Text style={[styles.periodTitle, { color: textColor }]}>Après-midi</Text>
+                                    <View style={styles.periodContent}>
+                                        <Image
+                                            source={getWeatherImage(dayForecast.afternoon.weather_code)}
+                                            style={styles.weatherImage}
+                                            resizeMode="contain"
+                                        />
+                                        <View style={styles.infoContainer}>
+                                            <Text style={[styles.temperature, { color: textColor }]}>
+                                                {dayForecast.afternoon.temperature_2m}°C
+                                            </Text>
+                                            <Text style={[styles.description, { color: textColor }]}>
+                                                {dayForecast.afternoon.weather_code[0]}
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Vent: {dayForecast.afternoon.wind_speed_10m} km/h
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Chute: {dayForecast.afternoon.snowfall || 0} cm
+                                            </Text>
+                                            <Text style={[styles.info, { color: textColor }]}>
+                                                Prof.: {Math.round(dayForecast.afternoon.snow_depth*100) || 0} cm
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </Animated.ScrollView>
             </View>
         </ImageBackground>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        padding: width < 400 ? 8 : 12,
-    },
     background: {
         flex: 1,
     },
     backgroundImage: {
         opacity: 0.5,
     },
-    containerTop: {
-        alignItems: "center",
-        marginVertical: width < 400 ? 10 : 20,
-    },
-    temperature: {
-        fontSize: width < 400 ? 50 : 60,
-        fontWeight: 'bold',
-        color: '#fff',
-        textAlign: 'center',
-    },
-    title: {
-        fontWeight: 'bold',
-        fontSize: width < 400 ? 18 : 20,
-        textAlign: 'center',
-    },
-    cardsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-    },
-    weatherCard: {
-        backgroundColor: '#ffffff',
+    container: {
         flex: 1,
-        marginHorizontal: 5,
-        padding: width < 400 ? 8 : 15,
-        borderRadius: 10,
-        elevation: 5,
-        opacity: 0.8,
-        marginTop:10
+        padding: 16,
     },
-    cardTextTemp: {
-        fontSize: width < 400 ? 30 : 40,
-        textAlign: 'center',
-        marginVertical: 5,
-        fontWeight: 'bold',
-    },
-    cardText: {
-        fontSize: 14,
-        textAlign: 'center',
-        marginVertical: 5,
-    },
-    forecastCard: {
-        padding: 13,
-        backgroundColor: '#ffffff',
-        borderRadius: 10,
-        elevation: 5,
-        opacity: 0.8,
-        marginTop: 10,
-    },
-    snowForecastCard: {
-        padding: 10,
-        backgroundColor: '#ffffff',
-        borderRadius: 10,
-        elevation: 5,
-        opacity: 0.8,
-        marginTop: 10,
-    },
-    weekDayInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 15,
-    },
-    weekDay: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-    },
-    dayText: {
-        fontSize: width < 400 ? 14 : 16,
-    },
-    windSpeed: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    snowfall: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    snowInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    snowDepth: {
-        marginTop: 5,
-    },
-    snowFallText: {
-        fontSize: 14,
     },
     errorText: {
-        color: 'red',
-        textAlign: 'center',
+        fontSize: 16,
     },
-    weatherDescription: {
-        textAlign: 'center',
-        fontWeight: 'bold',
-        color: 'grey',
-        fontSize: 15,
-    },
-    iconContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
+    headerContainer: {
         alignItems: 'center',
-        marginTop: 10,
+        marginBottom: 20,
     },
-    weatherIcon: {
-        marginRight: 3,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cardTextSnow:{
-        fontSize: 30,
+    headerTitle: {
+        fontSize: 24,
         fontWeight: 'bold',
     },
-    snowfallInfoText:{
+    scrollContent: {
+        paddingTop: 10,
+        paddingBottom: 50,
+    },
+    dayContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 15,
+        marginBottom: 15,
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
+    dayTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 10,
         textAlign: 'center',
-    }
-
+    },
+    periodContainer: {
+        marginBottom: 10,
+    },
+    periodTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 5,
+    },
+    periodContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    weatherImage: {
+        width: 50,
+        height: 50,
+        marginRight: 10,
+    },
+    infoContainer: {
+        flex: 1,
+    },
+    temperature: {
+        fontSize: 32,
+        fontWeight: 'bold',
+    },
+    description: {
+        fontSize: 16,
+        marginBottom: 5,
+    },
+    info: {
+        fontSize: 14,
+    },
 });
 
 export default WeatherScreen;

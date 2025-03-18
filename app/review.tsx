@@ -13,6 +13,8 @@ import apiClient from "@/api/apiClient";
 import { AntDesign } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from 'expo-secure-store';
+import {TextStyles} from "@/constants/TextStyles";
+import {useThemeColor} from "@/hooks/useThemeColor";
 
 
 const ReviewScreen = () => {
@@ -23,6 +25,8 @@ const ReviewScreen = () => {
     const [newComment, setNewComment] = useState('');
     const [title, setTitle] = useState('');
     const [starRating, setStarRating] = useState(0);
+
+    const errorTextColor = useThemeColor({}, 'errorText');
 
     function showRating(starRating: number) {
         const stars = [];
@@ -45,7 +49,6 @@ const ReviewScreen = () => {
                 const response = await apiClient.get(url);
                 setComments(response.data);
             } catch (error) {
-                console.log(error);
                 setError('Impossible de charger les commentaires.');
             } finally {
                 setLoading(false);
@@ -55,33 +58,48 @@ const ReviewScreen = () => {
     }, []);
 
     const handleAddComment = async () => {
-
-        let userToken;
-
-        if(Platform.OS === 'web'){
-            userToken = await AsyncStorage.getItem('token');
-        }else if(Platform.OS === 'android'){
-            userToken = await SecureStore.getItemAsync('token');
-        }
-
-        const url = '/comment/add';
-        const newCommentData = {
-            title: title,
-            comment: newComment,
-            note: starRating,
-            userToken: userToken
-        };
-
         try {
-            const response = await apiClient.post(url, newCommentData);
-            setComments([response.data, ...comments]);
-            setNewComment('');
-            setStarRating(0);
+
+            const userToken = Platform.OS === 'web'
+                ? await AsyncStorage.getItem('token')
+                : await SecureStore.getItemAsync('token');
+
+            if (!userToken) {
+                setError('Utilisateur non authentifié.');
+                return;
+            }
+
+            const url = '/comment/add';
+            const newCommentData = {
+                title: title,
+                comment: newComment,
+                note: starRating,
+                userToken: userToken,
+            };
+
+            const response = await apiClient.post(url, newCommentData, {
+                headers: {
+                    Authorization: `Bearer ${userToken}`,
+                },
+            });
+            if (response.status === 201) {
+                setComments((prevComments) => [response.data, ...prevComments]);
+                setNewComment('');
+                setTitle('');
+                setStarRating(0);
+            } else {
+                setError('Une erreur s\'est produite lors de l\'ajout du commentaire.');
+            }
         } catch (error) {
-            console.log(error);
-            setError('Impossible d\'ajouter le commentaire.');
+            if (error.response && error.response.data) {
+                setError(error.response.data.error || 'Une erreur s\'est produite.');
+            } else {
+                setError('Impossible d\'ajouter le commentaire.');
+            }
+            console.error('Add Comment Error:', error);
         }
     };
+
     return (
         <View style={styles.container}>
             <View style={styles.stationInfo}>
@@ -92,24 +110,20 @@ const ReviewScreen = () => {
                 <Text style={styles.sectionTitle}>Avis :</Text>
                 {loading ? (
                     <ActivityIndicator size="small" color="#003566" />
-                ) : comments.length > 0 ? (
-                    comments.map((comment) => (
+                ) : comments.length > 0 ? ( comments.map((comment) => (
                         <View style={styles.review} key={comment.id}>
                             <Text style={styles.username}>
                                 {comment.user && comment.user.firstname ? comment.user.firstname : 'Anonyme'}
                                 {showRating(comment.note)}
                             </Text>
-                            <Text>
-                                {comment.title}
-                            </Text>
+                            <Text style={styles.reviewTitle}>{comment.title}</Text>
                             <Text style={styles.reviewText}>{comment.description}</Text>
                         </View>
                     ))
                 ) : (
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={[{ color: errorTextColor }, TextStyles.errorText]}>{error}</Text>
                 )}
             </ScrollView>
-
             <View style={styles.leaveReviewContainer}>
                 <Text style={styles.sectionTitle}>Laisser un avis</Text>
                 <TextInput
@@ -168,8 +182,10 @@ const ReviewScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#e0f7fa',
+        backgroundColor: '#D6E6F2',
         padding: 20,
+        marginBottom: 60,
+
     },
     stationInfo: {
         marginBottom: 20,
@@ -178,12 +194,13 @@ const styles = StyleSheet.create({
     stationName: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#2e3b4e',
+        color: '#0A3A5D',
     },
     weather: {
         fontSize: 16,
-        color: '#333',
+        color: '#0A3A5D',
         marginTop: 5,
+
     },
     reviewContainer: {
         marginBottom: 20,
@@ -191,7 +208,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#2e3b4e',
+        color: '#0A3A5D',
         marginBottom: 10,
     },
     review: {
@@ -204,12 +221,15 @@ const styles = StyleSheet.create({
     username: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
         marginBottom: 5,
     },
     reviewText: {
         fontSize: 14,
-        color: '#666',
+        lineHeight: 20,
+    },
+    reviewTitle: {
+        fontSize: 14,
+        color: '#0A3A5D',
         lineHeight: 20,
     },
     leaveReviewContainer: {
@@ -228,13 +248,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderRadius: 10,
         padding: 15,
-        height: 20,
+        height: 50,
         textAlignVertical: 'top',
         marginBottom: 15,
         elevation: 2,
     },
     submitButton: {
-        backgroundColor: '#2e3b4e',
+        backgroundColor: '#0A3A5D',
         borderRadius: 10,
         alignItems: 'center',
         paddingVertical: 10,
@@ -244,14 +264,10 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    errorText: {
-        color: 'red',
-        textAlign: 'center',
-    },
     rating:{
         color:'#fcdd53',
         marginLeft:3,
-        fontSize:15,
+        fontSize:20,
     },
     ratingContainer: {
         marginBottom:5,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -10,13 +10,23 @@ import {
     Platform
 } from 'react-native';
 import axios from 'axios';
-import { useRouter, Link } from 'expo-router';
+import {useRouter, Link} from 'expo-router';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import {isUserConnected} from "@/api/apiClient";
 
 const LoginScreen: React.FC = () => {
+    useEffect(() => {
+        const checkConnection = async () => {
+            const connected = await isUserConnected();
+            if(connected){
+                router.replace("/dashboard");
+            }
+        };
+        checkConnection();
+    }, []);
+
     let API_URL = 'http://localhost:8000/';
     if (!Constants.expoConfig || !Constants.expoConfig.extra) {
         console.warn("Les variables d'environnement ne sont pas accessibles.");

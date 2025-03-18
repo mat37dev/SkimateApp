@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Card } from '@/components/Card';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import {useRouter} from "expo-router";
+import {TextStyles} from "@/constants/TextStyles";
 
 type WeatherCardProps = {
     weatherToday: any | null;
@@ -39,7 +40,7 @@ export function WeatherCard({ weatherToday, weatherTomorrow }: WeatherCardProps)
         <Card>
             {/* Onglets pour choisir le jour */}
             <Text style={styles.link} onPress={()=> router.push("/weather")}>Voir la semaine -&gt;</Text>
-            <Text style={[styles.header, {color: textColor}]}>Météo de la station</Text>
+            <Text style={[styles.header, {color: textColor}, TextStyles.cardTitle]}>Météo de la station</Text>
             <View style={styles.tabsContainer}>
                 <TouchableOpacity
                     style={[styles.tabButton, activeDay === 'today' && styles.tabButtonActive]}
@@ -80,15 +81,15 @@ export function WeatherCard({ weatherToday, weatherTomorrow }: WeatherCardProps)
                         <View style={styles.infoRow}>
                             {/* vent */}
                             <Image source={iconVent} style={styles.miniIcon} resizeMode="contain" />
-                            <Text style={styles.infoText}>
+                            <Text style={[styles.infoText, TextStyles.bodyText]}>
                                 {currentWeather.morning.wind_speed_10m} km/h
                             </Text>
                         </View>
                         <View style={styles.infoRow}>
                             {/* profondeur de neige */}
                             <Image source={iconFlocon} style={styles.miniIcon} resizeMode="contain" />
-                            <Text style={styles.infoText}>
-                                {currentWeather.morning.snow_depth} cm
+                            <Text style={[styles.infoText, TextStyles.bodyText]}>
+                                {Math.round(currentWeather.morning.snow_depth*100)} cm
                             </Text>
                         </View>
 
@@ -96,7 +97,7 @@ export function WeatherCard({ weatherToday, weatherTomorrow }: WeatherCardProps)
                         {!!currentWeather.morning.snowfall && currentWeather.morning.snowfall > 0 && (
                             <View style={styles.infoRow}>
                                 <Image source={iconNeige} style={styles.miniIcon} resizeMode="contain" />
-                                <Text style={styles.infoText}>
+                                <Text style={[styles.infoText, TextStyles.bodyText]}>
                                     {currentWeather.morning.snowfall} cm
                                 </Text>
                             </View>
@@ -119,20 +120,20 @@ export function WeatherCard({ weatherToday, weatherTomorrow }: WeatherCardProps)
 
                         <View style={styles.infoRow}>
                             <Image source={iconVent} style={styles.miniIcon} resizeMode="contain" />
-                            <Text style={styles.infoText}>
+                            <Text style={[styles.infoText, TextStyles.bodyText]}>
                                 {currentWeather.afternoon.wind_speed_10m} km/h
                             </Text>
                         </View>
                         <View style={styles.infoRow}>
                             <Image source={iconFlocon} style={styles.miniIcon} resizeMode="contain" />
-                            <Text style={styles.infoText}>
-                                {currentWeather.afternoon.snow_depth} cm
+                            <Text style={[styles.infoText, TextStyles.bodyText]}>
+                                {Math.round(currentWeather.afternoon.snow_depth*100)} cm
                             </Text>
                         </View>
                         {!!currentWeather.afternoon.snowfall && currentWeather.afternoon.snowfall > 0 && (
                             <View style={styles.infoRow}>
                                 <Image source={iconNeige} style={styles.miniIcon} resizeMode="contain" />
-                                <Text style={styles.infoText}>
+                                <Text style={[styles.infoText, TextStyles.bodyText]}>
                                     {currentWeather.afternoon.snowfall} cm
                                 </Text>
                             </View>
@@ -146,8 +147,6 @@ export function WeatherCard({ weatherToday, weatherTomorrow }: WeatherCardProps)
 
 const styles = StyleSheet.create({
     header:{
-        fontWeight: 'bold',
-        fontSize: 18,
         marginBottom: 10,
         textAlign: 'center',
     },
@@ -222,7 +221,6 @@ const styles = StyleSheet.create({
         marginRight: 4,
     },
     infoText: {
-        fontSize: 12,
         color: '#fff',
     },
 });

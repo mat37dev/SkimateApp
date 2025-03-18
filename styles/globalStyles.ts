@@ -16,7 +16,7 @@ export const globalStyles = StyleSheet.create({
     },
     // Style commun pour les cartes
     card: {
-        width: '85%',
+        width: '90%',
         marginBottom: 40,  // Séparation verticale de 15px
         padding: 15,       // Un peu de padding interne
         borderRadius: 15,   // Coins arrondis
