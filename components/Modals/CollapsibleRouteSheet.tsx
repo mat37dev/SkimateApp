@@ -27,7 +27,7 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 				maxHeight: screenHeight * 0.8, // or 0.7, etc.
 		  }
 		: {
-				height: 80,
+				height: 38,
 		  };
 
 	return (
@@ -66,9 +66,6 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 						</View>
 					);
 				})}
-
-				{/* A bit of spacing at the bottom */}
-				<View style={{ height: 20 }} />
 			</ScrollView>
 
 			{/* Footer with the Cancel button */}
@@ -84,18 +81,17 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 const stylesSheet = StyleSheet.create({
 	container: {
 		position: "absolute",
-		bottom: 0,
 		left: 0,
 		right: 0,
+		bottom: 0, // <-- offset so it's just above the nav bar
 		backgroundColor: "#fff",
 		borderTopLeftRadius: 12,
 		borderTopRightRadius: 12,
-
-		// Some shadow/elevation
 		shadowColor: "#000",
 		shadowOpacity: 0.2,
 		shadowRadius: 4,
 		elevation: 5,
+		marginBottom: 0,
 	},
 	header: {
 		alignItems: "center",

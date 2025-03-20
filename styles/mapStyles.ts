@@ -5,7 +5,7 @@ const styles = StyleSheet.create({
 	map: { flex: 1 },
 	mapStyleBtnContainer: {
 		position: "absolute",
-		bottom: 30,
+		bottom: 60,
 		right: 20,
 	},
 	mapStyleBtn: {
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
 	},
 	filterBtnContainer: {
 		position: "absolute",
-		top: 90,
+		top: 93,
 		right: 20,
 	},
 	filterBtn: {
@@ -88,9 +88,9 @@ const styles = StyleSheet.create({
 
 	userCenterBtnContainer: {
 		position: "absolute",
-		bottom: 150, // Above the 2D/3D button
+		bottom: 180, // Above the 2D/3D button
 		right: 20,
-		zIndex: 10,
+		zIndex: 0,
 	},
 
 	userCenterBtn: {
@@ -108,9 +108,9 @@ const styles = StyleSheet.create({
 
 	centerCameraBtnContainer: {
 		position: "absolute",
-		bottom: 85, // Above the 2D/3D button
+		bottom: 120, // Above the 2D/3D button
 		right: 20,
-		zIndex: 10,
+		zIndex: 0,
 	},
 
 	centerCameraBtn: {

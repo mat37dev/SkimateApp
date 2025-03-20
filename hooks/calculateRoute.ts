@@ -1,19 +1,14 @@
-// calculateRoute.js
-
+// calculateRoute.ts
 // Module-level variable for caching the graph.
 let cachedGraph = null;
 
-// Maximum bridging distance (in degrees). Adjust as needed.
 const MAX_BRIDGE_DISTANCE = 0.003; // ~50m
 
 /**
  * Preprocess features so that each feature yields exactly one "edge"
  * from a valid start to a valid end.
- * For runs, the first coordinate is the top (start) and the last is the bottom (end).
- * For lifts, the first coordinate is the bottom (start) and the last is the top (end).
- * Also, preserve the full coordinate array (for outlining the actual feature).
  */
-export function preprocessFeatures(features) {
+export function preprocessFeatures(features: any[]) {
 	const simplifiedEdges = [];
 	features.forEach((feature) => {
 		if (feature.geometry.type === "LineString") {
@@ -48,21 +43,17 @@ export function preprocessFeatures(features) {
 
 /**
  * A simple Graph class.
- * nodes: { nodeId: [lng, lat], ... }
- * adjacencyList: { nodeId: [{ node, weight, data }, ...], ... }
  */
 class Graph {
-	constructor() {
-		this.nodes = {};
-		this.adjacencyList = {};
-	}
-	addNode(nodeId, coord) {
+	nodes: { [key: string]: [number, number] } = {};
+	adjacencyList: { [key: string]: Array<{ node: string; weight: number; data: any }> } = {};
+	addNode(nodeId: string, coord: [number, number]) {
 		if (!this.nodes[nodeId]) {
 			this.nodes[nodeId] = coord;
 			this.adjacencyList[nodeId] = [];
 		}
 	}
-	addEdge(nodeId1, nodeId2, weight, data) {
+	addEdge(nodeId1: string, nodeId2: string, weight: number, data: any) {
 		if (!this.adjacencyList[nodeId1]) {
 			this.adjacencyList[nodeId1] = [];
 		}
@@ -71,7 +62,7 @@ class Graph {
 }
 
 // Helper to compute Euclidean distance.
-function distance(coordA, coordB) {
+function distance(coordA: [number, number], coordB: [number, number]) {
 	const dx = coordA[0] - coordB[0];
 	const dy = coordA[1] - coordB[1];
 	return Math.sqrt(dx * dx + dy * dy);
@@ -79,23 +70,19 @@ function distance(coordA, coordB) {
 
 /**
  * Build a graph from simplifiedEdges.
- * Each edge represents a full run/lift with its start and end nodes.
- * Then, bridging edges (walking) are added for nodes that are close enough.
  */
-export function buildGraph(simplifiedEdges) {
+export function buildGraph(simplifiedEdges: any[]) {
 	console.log("Building graph from simplified edges...");
 	const graph = new Graph();
 
-	// 1. Add nodes and run/lift edges.
+	// Add nodes and non-bridging edges.
 	simplifiedEdges.forEach((edge) => {
 		const startId = edge.startCoord.join(",");
 		const endId = edge.endCoord.join(",");
-
 		graph.addNode(startId, edge.startCoord);
 		graph.addNode(endId, edge.endCoord);
 
 		const w = distance(edge.startCoord, edge.endCoord);
-		// Mark this as a non-bridging edge and store full geometry.
 		const edgeData = {
 			bridging: false,
 			category: edge.category,
@@ -103,12 +90,12 @@ export function buildGraph(simplifiedEdges) {
 			fullCoordinates: edge.fullCoordinates,
 		};
 
-		// Add bidirectional edge.
+		// Add bidirectional edges.
 		graph.addEdge(startId, endId, w, edgeData);
 		graph.addEdge(endId, startId, w, edgeData);
 	});
 
-	// 2. Add bridging edges between nodes that are within MAX_BRIDGE_DISTANCE.
+	// Add bridging edges for nodes that are close.
 	const allNodeIds = Object.keys(graph.nodes);
 	for (let i = 0; i < allNodeIds.length; i++) {
 		for (let j = i + 1; j < allNodeIds.length; j++) {
@@ -124,15 +111,14 @@ export function buildGraph(simplifiedEdges) {
 			}
 		}
 	}
-
 	console.log(`Graph built: ${Object.keys(graph.nodes).length} nodes`);
 	return graph;
 }
 
 /**
- * getGraph: returns the cached graph if available, otherwise builds it.
+ * getGraph: Returns the cached graph if available, otherwise builds it.
  */
-export function getGraphFromEdges(simplifiedEdges) {
+export function getGraph(simplifiedEdges: any[]) {
 	if (cachedGraph) {
 		console.log("Graph is already stored!");
 		return cachedGraph;
@@ -145,7 +131,7 @@ export function getGraphFromEdges(simplifiedEdges) {
 /**
  * Find the closest node in the graph to the target coordinate.
  */
-export function findClosestNode(graph, targetCoord) {
+export function findClosestNode(graph: Graph, targetCoord: [number, number]) {
 	let closestId = null;
 	let minDist = Infinity;
 	for (const nodeId in graph.nodes) {
@@ -161,11 +147,11 @@ export function findClosestNode(graph, targetCoord) {
 /**
  * Compute shortest path using Dijkstra's algorithm.
  */
-export function computeShortestPath(graph, startNodeId, endNodeId) {
+export function computeShortestPath(graph: Graph, startNodeId: string, endNodeId: string) {
 	console.log(`Computing shortest path from ${startNodeId} to ${endNodeId}`);
-	const distances = {};
-	const previous = {};
-	const unvisited = new Set();
+	const distances: { [key: string]: number } = {};
+	const previous: { [key: string]: string | null } = {};
+	const unvisited = new Set<string>();
 
 	for (const nodeId in graph.nodes) {
 		distances[nodeId] = Infinity;
@@ -175,7 +161,7 @@ export function computeShortestPath(graph, startNodeId, endNodeId) {
 	distances[startNodeId] = 0;
 
 	while (unvisited.size > 0) {
-		let current = null;
+		let current: string | null = null;
 		for (let nodeId of unvisited) {
 			if (current === null || distances[nodeId] < distances[current]) {
 				current = nodeId;
@@ -190,7 +176,6 @@ export function computeShortestPath(graph, startNodeId, endNodeId) {
 			break;
 		}
 		unvisited.delete(current);
-
 		const neighbors = graph.adjacencyList[current] || [];
 		neighbors.forEach((edge) => {
 			const alt = distances[current] + edge.weight;
@@ -202,8 +187,8 @@ export function computeShortestPath(graph, startNodeId, endNodeId) {
 	}
 
 	// Reconstruct path.
-	const path = [];
-	let cur = endNodeId;
+	const path: string[] = [];
+	let cur: string | null = endNodeId;
 	while (cur !== null) {
 		path.unshift(cur);
 		cur = previous[cur];
@@ -217,30 +202,13 @@ export function computeShortestPath(graph, startNodeId, endNodeId) {
 }
 
 /**
- * Helper: Get a color for a run based on its difficulty.
+ * Generate segmented routes based on the computed path.
  */
-function getRunColor(properties) {
-	if (!properties) return "grey";
-	const diff = properties["piste:difficulty"] || properties.difficulty;
-	if (diff === "easy") return "blue";
-	if (diff === "novice") return "green";
-	if (diff === "intermediate") return "red";
-	if (diff === "expert") return "black";
-	return "grey";
-}
-
-/**
- * Generate segmented routes.
- * For each consecutive pair of nodes in the computed path, we look up the edge data.
- * If edge.data.bridging is true, we treat it as a walking segment (a straight line).
- * For non-bridging edges (i.e. a run or lift), we use the fullCoordinates from the original feature.
- */
-export function generateSegmentedRoutes(graph, path) {
+export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 	console.log("Generating segmented routes from path:", path);
-	const segments = [];
-	let currentSegment = null; // For grouping consecutive non-bridging edges
+	const segments: any[] = [];
+	let currentSegment = null;
 
-	// Iterate over consecutive node pairs.
 	for (let i = 0; i < path.length - 1; i++) {
 		const node1 = path[i];
 		const node2 = path[i + 1];
@@ -251,46 +219,37 @@ export function generateSegmentedRoutes(graph, path) {
 		}
 		const edge = candidateEdges[0];
 		if (edge.data.bridging) {
-			// Finish any current non-bridging segment.
 			if (currentSegment) {
 				segments.push(currentSegment);
 				currentSegment = null;
 			}
-			// Create a bridging segment as a straight line between node1 and node2.
 			segments.push({
 				segmentType: "bridging",
 				color: "blue",
 				coordinates: [graph.nodes[node1], graph.nodes[node2]],
 			});
 		} else {
-			// Non-bridging: use the fullCoordinates from the edge.
 			const runId = edge.data.properties?.name || "unknown";
 			const segColor = edge.data.category === "run" ? getRunColor(edge.data.properties) : "black";
-			// If currentSegment is defined and has the same runId, continue.
 			if (currentSegment && currentSegment.runId === runId) {
-				// Do nothing: assume the full geometry already represents the entire run.
-				// Alternatively, you could merge segments if needed.
+				// Already grouped.
 			} else {
-				// If there's an existing segment, push it.
 				if (currentSegment) segments.push(currentSegment);
-				// Start a new segment using the fullCoordinates.
 				currentSegment = {
 					segmentType: "runOrLift",
 					runId: runId,
 					color: segColor,
-					coordinates: edge.data.fullCoordinates, // Detailed geometry from the original feature.
+					coordinates: edge.data.fullCoordinates,
 				};
 			}
 		}
 	}
-	// Push any remaining non-bridging segment.
 	if (currentSegment) segments.push(currentSegment);
 
-	// Convert segments into GeoJSON features.
 	const features = segments.map((seg) => ({
 		type: "Feature",
 		properties: {
-			segmentType: seg.segmentType, // "bridging" or "runOrLift"
+			segmentType: seg.segmentType,
 			runId: seg.runId || "",
 			color: seg.color,
 		},
@@ -307,14 +266,98 @@ export function generateSegmentedRoutes(graph, path) {
 }
 
 /**
- * getGraph: returns the cached graph if it exists, otherwise builds it.
+ * Helper to get a color for a run based on its difficulty.
  */
-export function getGraph(simplifiedEdges) {
-	if (cachedGraph) {
-		console.log("Graph is already stored!");
-		return cachedGraph;
+function getRunColor(properties: any) {
+	if (!properties) return "grey";
+	const diff = properties["piste:difficulty"] || properties.difficulty;
+	if (diff === "easy") return "blue";
+	if (diff === "novice") return "green";
+	if (diff === "intermediate") return "red";
+	if (diff === "expert") return "black";
+	return "grey";
+}
+
+/**
+ * calculateRouteForFeature: Exports a single function that encapsulates
+ * the entire route calculation process.
+ *
+ * @param selectedFeature The feature selected by the user.
+ * @param direction "top" or "bottom" indicating which end of the feature to travel to.
+ * @param userLocation The user's coordinate as [lng, lat].
+ * @param combinedList The full list of features used for route calculation.
+ *
+ * @returns { segmentedGeoJSON, destinationCoord } or null if the route cannot be computed.
+ */
+export function calculateRouteForFeature(
+	selectedFeature: any,
+	direction: "top" | "bottom",
+	userLocation: [number, number],
+	combinedList: any[],
+	allowedFilters?: {
+		runs: boolean;
+		lifts: boolean;
+		novice: boolean;
+		easy: boolean;
+		intermediate: boolean;
+		expert: boolean;
 	}
-	console.log("Graph is not stored yet :/ Building graph...");
-	cachedGraph = buildGraph(simplifiedEdges);
-	return cachedGraph;
+) {
+	// If allowedFilters is provided, filter the combinedList accordingly
+	const filteredCombinedList = allowedFilters
+		? combinedList.filter((feature) => {
+				const cat = feature.category || feature.properties?.category;
+				if (cat === "run") {
+					if (!allowedFilters.runs) return false;
+					// Get difficulty from properties (adjust key names if necessary)
+					const diff = (feature.properties?.["piste:difficulty"] || feature.properties?.difficulty || "").toLowerCase();
+					if (diff === "novice" && !allowedFilters.novice) return false;
+					if (diff === "easy" && !allowedFilters.easy) return false;
+					if (diff === "intermediate" && !allowedFilters.intermediate) return false;
+					if (diff === "expert" && !allowedFilters.expert) return false;
+					return true;
+				} else if (cat === "lift") {
+					return allowedFilters.lifts;
+				}
+				return true;
+		  })
+		: combinedList;
+
+	// Preprocess the (filtered) combined list.
+	const simplifiedEdges = preprocessFeatures(filteredCombinedList);
+	if (simplifiedEdges.length === 0) {
+		console.error("No simplified edges available.");
+		return null;
+	}
+	// Build the graph:
+	// If allowedFilters is provided, always rebuild the graph
+	const graph = allowedFilters ? buildGraph(simplifiedEdges) : getGraph(simplifiedEdges);
+	if (!graph) {
+		console.error("Graph could not be built.");
+		return null;
+	}
+	// Determine destination coordinate.
+	let destinationCoord: [number, number] | null = null;
+	if (selectedFeature.geometry.type === "LineString") {
+		const coords = selectedFeature.geometry.coordinates;
+		destinationCoord = direction === "top" ? coords[0] : coords[coords.length - 1];
+	} else if (selectedFeature.geometry.type === "Point") {
+		destinationCoord = selectedFeature.geometry.coordinates;
+	}
+	if (!destinationCoord) return null;
+
+	// Find the closest nodes.
+	const startNodeId = findClosestNode(graph, userLocation);
+	const endNodeId = findClosestNode(graph, destinationCoord);
+
+	// Compute the shortest path.
+	const path = computeShortestPath(graph, startNodeId, endNodeId);
+	if (!path || path.length === 0) {
+		console.error("No path found");
+		return null;
+	}
+
+	// Generate the segmented route.
+	const segmentedGeoJSON = generateSegmentedRoutes(graph, path);
+	return { segmentedGeoJSON, destinationCoord };
 }
