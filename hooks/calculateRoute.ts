@@ -1,6 +1,5 @@
-// calculateRoute.ts
 // Module-level variable for caching the graph.
-let cachedGraph = null;
+let cachedGraph: Graph | null = null;
 
 const MAX_BRIDGE_DISTANCE = 0.003; // ~50m
 
@@ -9,15 +8,16 @@ const MAX_BRIDGE_DISTANCE = 0.003; // ~50m
  * from a valid start to a valid end.
  */
 export function preprocessFeatures(features: any[]) {
-	const simplifiedEdges = [];
+	const simplifiedEdges: any[] = [];
 	features.forEach((feature) => {
 		if (feature.geometry.type === "LineString") {
 			const coords = feature.geometry.coordinates;
 			if (!coords || coords.length < 2) return;
 			const category = feature.category || feature.properties?.category;
 			if (category === "run") {
-				const startCoord = coords[0]; // top
-				const endCoord = coords[coords.length - 1]; // bottom
+				// For runs, first coordinate is the top (start), last is the bottom (end).
+				const startCoord = coords[0];
+				const endCoord = coords[coords.length - 1];
 				simplifiedEdges.push({
 					startCoord,
 					endCoord,
@@ -26,8 +26,9 @@ export function preprocessFeatures(features: any[]) {
 					fullCoordinates: coords, // full geometry for outlining
 				});
 			} else if (category === "lift") {
-				const startCoord = coords[0]; // bottom
-				const endCoord = coords[coords.length - 1]; // top
+				// For lifts, first coordinate is the bottom (start), last is the top (end).
+				const startCoord = coords[0];
+				const endCoord = coords[coords.length - 1];
 				simplifiedEdges.push({
 					startCoord,
 					endCoord,
@@ -47,12 +48,14 @@ export function preprocessFeatures(features: any[]) {
 class Graph {
 	nodes: { [key: string]: [number, number] } = {};
 	adjacencyList: { [key: string]: Array<{ node: string; weight: number; data: any }> } = {};
+
 	addNode(nodeId: string, coord: [number, number]) {
 		if (!this.nodes[nodeId]) {
 			this.nodes[nodeId] = coord;
 			this.adjacencyList[nodeId] = [];
 		}
 	}
+
 	addEdge(nodeId1: string, nodeId2: string, weight: number, data: any) {
 		if (!this.adjacencyList[nodeId1]) {
 			this.adjacencyList[nodeId1] = [];
@@ -70,12 +73,18 @@ function distance(coordA: [number, number], coordB: [number, number]) {
 
 /**
  * Build a graph from simplifiedEdges.
+ * Each edge represents a full run/lift with its start and end nodes.
+ * Then, bridging edges (walking) are added for nodes that are within MAX_BRIDGE_DISTANCE.
+ *
+ * Note: For runs and lifts, only a one-way edge is added:
+ * - Runs: from top (start) to bottom (end)
+ * - Lifts: from bottom (start) to top (end)
  */
 export function buildGraph(simplifiedEdges: any[]) {
 	console.log("Building graph from simplified edges...");
 	const graph = new Graph();
 
-	// Add nodes and non-bridging edges.
+	// 1. Add nodes and directional edges for runs/lifts.
 	simplifiedEdges.forEach((edge) => {
 		const startId = edge.startCoord.join(",");
 		const endId = edge.endCoord.join(",");
@@ -90,12 +99,17 @@ export function buildGraph(simplifiedEdges: any[]) {
 			fullCoordinates: edge.fullCoordinates,
 		};
 
-		// Add bidirectional edges.
-		graph.addEdge(startId, endId, w, edgeData);
-		graph.addEdge(endId, startId, w, edgeData);
+		// For runs and lifts, add only one directional edge.
+		if (edge.category === "run" || edge.category === "lift") {
+			graph.addEdge(startId, endId, w, edgeData);
+		} else {
+			// Fallback: add bidirectional edges.
+			graph.addEdge(startId, endId, w, edgeData);
+			graph.addEdge(endId, startId, w, edgeData);
+		}
 	});
 
-	// Add bridging edges for nodes that are close.
+	// 2. Add bridging edges between nodes that are within MAX_BRIDGE_DISTANCE.
 	const allNodeIds = Object.keys(graph.nodes);
 	for (let i = 0; i < allNodeIds.length; i++) {
 		for (let j = i + 1; j < allNodeIds.length; j++) {
@@ -106,13 +120,28 @@ export function buildGraph(simplifiedEdges: any[]) {
 			const d = distance(coordA, coordB);
 			if (d < MAX_BRIDGE_DISTANCE) {
 				const bridgingData = { bridging: true };
+				// Bridging edges are bidirectional.
 				graph.addEdge(nodeIdA, nodeIdB, d, bridgingData);
 				graph.addEdge(nodeIdB, nodeIdA, d, bridgingData);
 			}
 		}
 	}
+
 	console.log(`Graph built: ${Object.keys(graph.nodes).length} nodes`);
 	return graph;
+}
+
+// Helper to compute the bearing (in degrees) from coord1 to coord2.
+function getBearing(coord1: [number, number], coord2: [number, number]): number {
+	const toRad = (deg: number) => deg * (Math.PI / 180);
+	const toDeg = (rad: number) => rad * (180 / Math.PI);
+	const lat1 = toRad(coord1[1]);
+	const lat2 = toRad(coord2[1]);
+	const dLon = toRad(coord2[0] - coord1[0]);
+	const y = Math.sin(dLon) * Math.cos(lat2);
+	const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+	let brng = toDeg(Math.atan2(y, x));
+	return (brng + 360) % 360;
 }
 
 /**
@@ -132,7 +161,7 @@ export function getGraph(simplifiedEdges: any[]) {
  * Find the closest node in the graph to the target coordinate.
  */
 export function findClosestNode(graph: Graph, targetCoord: [number, number]) {
-	let closestId = null;
+	let closestId: string | null = null;
 	let minDist = Infinity;
 	for (const nodeId in graph.nodes) {
 		const d = distance(graph.nodes[nodeId], targetCoord);
@@ -186,7 +215,6 @@ export function computeShortestPath(graph: Graph, startNodeId: string, endNodeId
 		});
 	}
 
-	// Reconstruct path.
 	const path: string[] = [];
 	let cur: string | null = endNodeId;
 	while (cur !== null) {
@@ -202,12 +230,29 @@ export function computeShortestPath(graph: Graph, startNodeId: string, endNodeId
 }
 
 /**
- * Generate segmented routes based on the computed path.
+ * Helper: Get a color for a run based on its difficulty.
  */
+function getRunColor(properties: any) {
+	if (!properties) return "grey";
+	const diff = properties["piste:difficulty"] || properties.difficulty;
+	if (diff === "easy") return "blue";
+	if (diff === "novice") return "green";
+	if (diff === "intermediate") return "red";
+	if (diff === "expert") return "black";
+	return "grey";
+}
+
+/**
+ * Generate segmented routes.
+ * For each consecutive pair of nodes in the computed path, if the edge is bridging,
+ * we create a simple straight line (blue, dotted). Otherwise, we use the fullCoordinates
+ * from the original feature.
+ */
+// Updated generateSegmentedRoutes: for non-bridging segments, compute and add the bearing.
 export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 	console.log("Generating segmented routes from path:", path);
 	const segments: any[] = [];
-	let currentSegment = null;
+	let currentSegment = null; // For grouping consecutive non-bridging edges
 
 	for (let i = 0; i < path.length - 1; i++) {
 		const node1 = path[i];
@@ -231,15 +276,21 @@ export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 		} else {
 			const runId = edge.data.properties?.name || "unknown";
 			const segColor = edge.data.category === "run" ? getRunColor(edge.data.properties) : "black";
+			let bearing = 0;
+			// Compute bearing using the full geometry of the original feature.
+			if (edge.data.fullCoordinates && edge.data.fullCoordinates.length >= 2) {
+				bearing = getBearing(edge.data.fullCoordinates[0], edge.data.fullCoordinates[edge.data.fullCoordinates.length - 1]);
+			}
 			if (currentSegment && currentSegment.runId === runId) {
-				// Already grouped.
+				// Assume the full geometry already represents the entire feature.
 			} else {
 				if (currentSegment) segments.push(currentSegment);
 				currentSegment = {
 					segmentType: "runOrLift",
 					runId: runId,
 					color: segColor,
-					coordinates: edge.data.fullCoordinates,
+					coordinates: edge.data.fullCoordinates, // Detailed geometry from original feature.
+					bearing: bearing,
 				};
 			}
 		}
@@ -252,6 +303,7 @@ export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 			segmentType: seg.segmentType,
 			runId: seg.runId || "",
 			color: seg.color,
+			bearing: seg.bearing, // This will be used to rotate the arrow.
 		},
 		geometry: {
 			type: "LineString",
@@ -263,19 +315,6 @@ export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 		type: "FeatureCollection",
 		features,
 	};
-}
-
-/**
- * Helper to get a color for a run based on its difficulty.
- */
-function getRunColor(properties: any) {
-	if (!properties) return "grey";
-	const diff = properties["piste:difficulty"] || properties.difficulty;
-	if (diff === "easy") return "blue";
-	if (diff === "novice") return "green";
-	if (diff === "intermediate") return "red";
-	if (diff === "expert") return "black";
-	return "grey";
 }
 
 /**

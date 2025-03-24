@@ -98,7 +98,7 @@ export default function MapScreen() {
 	};
 
 	// Mocked user location
-	const [userLocation] = useState<[number, number]>([6.6771972, 45.5052883]);
+	const [userLocation] = useState<[number, number]>([6.7307541, 45.497037]);
 
 	// Handle dropdown changes (Station Select)
 	const handleStationChange = (osmId: string) => {
@@ -227,12 +227,15 @@ export default function MapScreen() {
 						style={{
 							symbolPlacement: "line",
 							symbolSpacing: 200,
-							textField: "▶",
+							textField: "▶", // or "▶"
 							textSize: 30,
 							textColor: color,
 							textHaloWidth: 0,
 							textHaloColor: "#ffffff",
 							textOpacity: 1,
+							textRotationAlignment: "map", // Align with the map, not the viewport
+							textPitchAlignment: "map",
+							textKeepUpright: false, // Prevent auto-flipping
 						}}
 					/>
 				)}
@@ -292,7 +295,6 @@ export default function MapScreen() {
 				travelFilters={travelFilters}
 				setTravelFilters={setTravelFilters}
 			/>
-
 			<SearchModal
 				visible={searchModalVisible}
 				onClose={() => setSearchModalVisible(false)}
@@ -308,7 +310,7 @@ export default function MapScreen() {
 					<Text style={styles.searchBarText}>Search...</Text>
 				</TouchableOpacity>
 			</View>
-			{/* SkiMap Component */}
+			{/* SkiMap Component with filter props */}
 			<SkiMap
 				cameraCenter={cameraCenter}
 				is3D={is3D}
@@ -321,6 +323,12 @@ export default function MapScreen() {
 				onMapDidFinishRendering={onMapDidFinishRendering}
 				onMapFeaturePress={handleMapFeaturePress}
 				runLayers={runLayers}
+				showRuns={showRuns}
+				showLifts={showLifts}
+				showNovice={showNovice}
+				showEasy={showEasy}
+				showIntermediate={showIntermediate}
+				showExpert={showExpert}
 			/>
 			{/* Rounded Buttons */}
 			<View style={styles.centerCameraBtnContainer}>

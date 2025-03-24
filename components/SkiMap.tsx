@@ -1,4 +1,3 @@
-// components/SkiMap.tsx
 import React from "react";
 import MapboxGL from "@rnmapbox/maps";
 import { View, ActivityIndicator, Text } from "react-native";
@@ -16,6 +15,12 @@ interface SkiMapProps {
 	onMapDidFinishRendering: () => void;
 	onMapFeaturePress: (e: any) => void;
 	runLayers: (shapeId: string, lineId: string, color: string, labelId: string, arrowId: string, shapeData: any) => JSX.Element;
+	showRuns: boolean;
+	showLifts: boolean;
+	showNovice: boolean;
+	showEasy: boolean;
+	showIntermediate: boolean;
+	showExpert: boolean;
 }
 
 export function SkiMap({
@@ -30,6 +35,12 @@ export function SkiMap({
 	onMapDidFinishRendering,
 	onMapFeaturePress,
 	runLayers,
+	showRuns,
+	showLifts,
+	showNovice,
+	showEasy,
+	showIntermediate,
+	showExpert,
 }: SkiMapProps) {
 	// Destructure assets for convenience.
 	const { runs, lifts } = assets || {};
@@ -103,13 +114,26 @@ export function SkiMap({
 			{/* Render calculated route */}
 			{routeFeature && (
 				<MapboxGL.ShapeSource id='routeSource' shape={routeFeature}>
+					{/* Dotted line for bridging/walking */}
 					<MapboxGL.LineLayer
-						id='routeLayer'
+						id='bridgingLayer'
+						filter={["==", ["get", "segmentType"], "bridging"]}
+						style={{
+							lineColor: "green",
+							lineWidth: 4,
+							lineOpacity: 1,
+							lineDasharray: [1, 1], // dotted
+						}}
+					/>
+
+					{/* Solid line for everything else */}
+					<MapboxGL.LineLayer
+						id='normalLayer'
+						filter={["!=", ["get", "segmentType"], "bridging"]}
 						style={{
 							lineColor: ["get", "color"],
 							lineWidth: 4,
 							lineOpacity: 1,
-							lineDasharray: ["match", ["get", "segmentType"], "bridging", [2, 2], [1, 0]],
 						}}
 					/>
 				</MapboxGL.ShapeSource>
@@ -145,10 +169,8 @@ export function SkiMap({
 				</MapboxGL.ShapeSource>
 			)}
 
-			{/* Lift lines */}
-			{liftLines.features.length > 0 && (
-				// You can keep your liftLineLayers here or move them into SkiMap if preferred.
-				// For simplicity, you can pass in a component or function to render these.
+			{/* Lift lines (shown only if showLifts is true) */}
+			{showLifts && liftLines.features.length > 0 && (
 				<MapboxGL.ShapeSource id='liftLineSource' shape={liftLines} onPress={onMapFeaturePress}>
 					<MapboxGL.LineLayer
 						id='liftLineLayer'
@@ -179,19 +201,22 @@ export function SkiMap({
 						style={{
 							symbolPlacement: "line",
 							symbolSpacing: 200,
-							textField: "▶",
+							textField: "▶▶",
 							textSize: 30,
 							textColor: "black",
 							textHaloWidth: 0,
 							textHaloColor: "#ffffff",
 							textOpacity: 1,
+							textRotationAlignment: "map",
+							textPitchAlignment: "map",
+							textKeepUpright: false,
 						}}
 					/>
 				</MapboxGL.ShapeSource>
 			)}
 
-			{/* Lift start points */}
-			{liftStartPoints.features.length > 0 && (
+			{/* Lift start points (shown only if showLifts is true) */}
+			{showLifts && liftStartPoints.features.length > 0 && (
 				<MapboxGL.ShapeSource id='liftStartPointsSource' shape={liftStartPoints} onPress={onMapFeaturePress}>
 					<MapboxGL.SymbolLayer
 						id='liftStartPointsLayer'
@@ -229,20 +254,23 @@ export function SkiMap({
 				</MapboxGL.ShapeSource>
 			)}
 
-			{/* Runs by difficulty using runLayers */}
-			{runLayers && (
+			{/* Runs by difficulty using runLayers (shown only if showRuns is true) */}
+			{showRuns && (
 				<>
-					{runLayers("runEasySource", "runEasyLayer", "blue", "runEasyLabelLayer", "runEasyArrowLayer", runsEasy)}
-					{runLayers("runNoviceSource", "runNoviceLayer", "green", "runNoviceLabelLayer", "runNoviceArrowLayer", runsNovice)}
-					{runLayers(
-						"runIntermediateSource",
-						"runIntermediateLayer",
-						"red",
-						"runIntermediateLabelLayer",
-						"runIntermediateArrowLayer",
-						runsIntermediate
-					)}
-					{runLayers("runExpertSource", "runExpertLayer", "black", "runExpertLabelLayer", "runExpertArrowLayer", runsExpert)}
+					{showEasy && runLayers("runEasySource", "runEasyLayer", "blue", "runEasyLabelLayer", "runEasyArrowLayer", runsEasy)}
+					{showNovice &&
+						runLayers("runNoviceSource", "runNoviceLayer", "green", "runNoviceLabelLayer", "runNoviceArrowLayer", runsNovice)}
+					{showIntermediate &&
+						runLayers(
+							"runIntermediateSource",
+							"runIntermediateLayer",
+							"red",
+							"runIntermediateLabelLayer",
+							"runIntermediateArrowLayer",
+							runsIntermediate
+						)}
+					{showExpert &&
+						runLayers("runExpertSource", "runExpertLayer", "black", "runExpertLabelLayer", "runExpertArrowLayer", runsExpert)}
 					{runLayers("runNullSource", "runNullLayer", "grey", "runNullLabelLayer", "runNullArrowLayer", runsNull)}
 					{runLayers("runUnknownSource", "runUnknownLayer", "grey", "runUnknownLabelLayer", "runUnknownArrowLayer", runsUnknown)}
 				</>
