@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import MapboxGL from "@rnmapbox/maps";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, Text, Image } from "react-native";
 import styles from "@/styles/mapStyles";
 
 interface SkiMapProps {
@@ -21,7 +21,52 @@ interface SkiMapProps {
 	showEasy: boolean;
 	showIntermediate: boolean;
 	showExpert: boolean;
+	gpsMode?: boolean; // new optional prop
 }
+
+// Reversed sample coordinates (the route to follow)
+const sampleRunCoordinates: [number, number][] = [
+	[6.7307541, 45.497037],
+	[6.7301627, 45.4969619],
+	[6.7297404, 45.4969657],
+	[6.7293673, 45.4968699],
+	[6.7288593, 45.4966166],
+	[6.7285922, 45.4965638],
+	[6.7282779, 45.4965865],
+	[6.7276712, 45.4969136],
+	[6.7272727, 45.497186],
+	[6.726764, 45.4973352],
+	[6.7261479, 45.4972917],
+	[6.7252008, 45.497024],
+	[6.7243223, 45.4968833],
+	[6.7238639, 45.4969072],
+	[6.723399, 45.4969871],
+	[6.7222838, 45.4965083],
+	[6.7213359, 45.4958927],
+	[6.7203937, 45.4956098],
+	[6.7195376, 45.4956973],
+	[6.7188645, 45.4958651],
+	[6.7182123, 45.4958968],
+	[6.7176631, 45.4957533],
+	[6.716829, 45.495226],
+	[6.7162461, 45.49499],
+	[6.7151623, 45.4949755],
+	[6.7139783, 45.4949658],
+	[6.7130194, 45.4950639],
+	[6.7126284, 45.495296],
+	[6.712419, 45.4957454],
+	[6.7121293, 45.4960741],
+	[6.7115528, 45.4963195],
+	[6.7102925, 45.4971673],
+	[6.7093207, 45.4977401],
+	[6.7087924, 45.4981266],
+	[6.7084744, 45.4984354],
+	[6.7082474, 45.4992],
+	[6.7083247, 45.4998884],
+	[6.7085379, 45.5005338],
+	[6.7083902, 45.50136],
+	[6.7081278, 45.5016024],
+];
 
 export function SkiMap({
 	cameraCenter,
@@ -41,8 +86,9 @@ export function SkiMap({
 	showEasy,
 	showIntermediate,
 	showExpert,
+	gpsMode,
 }: SkiMapProps) {
-	// Destructure assets for convenience.
+	// Assets destructuring...
 	const { runs, lifts } = assets || {};
 	const runsEasy = runs?.easy || { type: "FeatureCollection", features: [] };
 	const runsNovice = runs?.novice || { type: "FeatureCollection", features: [] };
@@ -53,6 +99,64 @@ export function SkiMap({
 
 	const liftLines = lifts?.liftLines || { type: "FeatureCollection", features: [] };
 	const liftStartPoints = lifts?.liftStartPoints || { type: "FeatureCollection", features: [] };
+
+	// State to track dynamic user location and current index in the route.
+	const [currentLocation, setCurrentLocation] = useState<[number, number]>(userLocation);
+	const [currentIndex, setCurrentIndex] = useState(0);
+
+	// Helper: Calculate bearing between two coordinates.
+	function calculateBearing(start: [number, number], end: [number, number]): number {
+		const [lon1, lat1] = start;
+		const [lon2, lat2] = end;
+		const φ1 = (lat1 * Math.PI) / 180;
+		const φ2 = (lat2 * Math.PI) / 180;
+		const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+		const y = Math.sin(Δλ) * Math.cos(φ2);
+		const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+		let θ = Math.atan2(y, x) * (180 / Math.PI);
+		return (θ + 360) % 360;
+	}
+
+	// Compute the angle using currentLocation and the next coordinate in the sampleRunCoordinates array.
+	let computedAngle = 0;
+	if (gpsMode && sampleRunCoordinates.length > 0) {
+		const nextCoord =
+			currentIndex < sampleRunCoordinates.length - 1 ? sampleRunCoordinates[currentIndex + 1] : sampleRunCoordinates[currentIndex];
+		computedAngle = calculateBearing(currentLocation, nextCoord);
+	}
+
+	// Update camera heading and center whenever currentLocation (or computedAngle) changes.
+	useEffect(() => {
+		if (gpsMode) {
+			mapCameraRef.current?.setCamera({
+				centerCoordinate: currentLocation,
+				zoomLevel: 18,
+				pitch: 45,
+				heading: computedAngle,
+				animationDuration: 1500,
+			});
+		}
+	}, [gpsMode, computedAngle, currentLocation]);
+
+	// Simulation: Update currentLocation along the sampleRunCoordinates.
+	useEffect(() => {
+		if (gpsMode && sampleRunCoordinates.length > 0) {
+			// Start from the beginning.
+			let index = 0;
+			setCurrentLocation(sampleRunCoordinates[index]);
+			setCurrentIndex(index);
+			const intervalId = setInterval(() => {
+				index++;
+				if (index >= sampleRunCoordinates.length) {
+					clearInterval(intervalId);
+				} else {
+					setCurrentLocation(sampleRunCoordinates[index]);
+					setCurrentIndex(index);
+				}
+			}, 1500); // update every 2 seconds (adjust as needed)
+			return () => clearInterval(intervalId);
+		}
+	}, [gpsMode]);
 
 	return (
 		<MapboxGL.MapView
@@ -83,20 +187,39 @@ export function SkiMap({
 			{/* Camera */}
 			<MapboxGL.Camera ref={mapCameraRef} zoomLevel={11} centerCoordinate={cameraCenter} pitch={is3D ? 70 : 0} />
 
-			{/* User Location */}
-			<MapboxGL.PointAnnotation id='userLocation' coordinate={userLocation}>
-				<View
-					style={{
-						width: 20,
-						height: 20,
-						borderRadius: 10,
-						backgroundColor: "blue",
-						borderWidth: 3,
-						borderColor: "#fff",
-					}}
-				/>
+			{/* User Location Annotation */}
+			<MapboxGL.PointAnnotation id='userLocation' coordinate={currentLocation}>
+				{gpsMode ? (
+					<View
+						style={{
+							padding: 10,
+							backgroundColor: "rgba(255,255,255,0.3)",
+							borderRadius: 25,
+							zIndex: 4,
+						}}
+					>
+						<Image
+							source={require("../assets/mapIcons/travelArrow.png")}
+							style={{
+								width: 30,
+								height: 30,
+								transform: [{ rotate: `${computedAngle}deg` }],
+							}}
+						/>
+					</View>
+				) : (
+					<View
+						style={{
+							width: 20,
+							height: 20,
+							borderRadius: 10,
+							backgroundColor: "blue",
+							borderWidth: 3,
+							borderColor: "#fff",
+						}}
+					/>
+				)}
 			</MapboxGL.PointAnnotation>
-
 			{/* Highlight selected feature */}
 			{selectedFeature && (
 				<MapboxGL.ShapeSource id='highlightSource' shape={{ type: "FeatureCollection", features: [selectedFeature] }}>

@@ -17,9 +17,10 @@ type CollapsibleRouteSheetProps = {
 	open: boolean; // whether the sheet is "open" or "collapsed"
 	onToggle: () => void;
 	onCancelTravel: () => void; // the function to cancel the travel
+	lockingRoute: () => void;
 };
 
-export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel }: CollapsibleRouteSheetProps) {
+export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel, lockingRoute }: CollapsibleRouteSheetProps) {
 	// If open, we let content define the height up to maxHeight.
 	// If collapsed, we can set a small fixed height (like 80).
 	const containerStyle = open
@@ -69,9 +70,13 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 			</ScrollView>
 
 			{/* Footer with the Cancel button */}
+
 			<View style={stylesSheet.footer}>
 				<TouchableOpacity style={stylesSheet.cancelBtn} onPress={onCancelTravel}>
 					<Text style={{ color: "#fff", fontWeight: "bold" }}>Cancel Travel</Text>
+				</TouchableOpacity>
+				<TouchableOpacity style={stylesSheet.lockBtn} onPress={lockingRoute}>
+					<Text style={{ color: "#fff", fontWeight: "bold" }}>Let's go</Text>
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -108,12 +113,22 @@ const stylesSheet = StyleSheet.create({
 	footer: {
 		padding: 10,
 		alignItems: "center",
+		flex: 2,
+		flexDirection: "row",
+		justifyContent: "space-around",
+	},
+
+	lockBtn: {
+		backgroundColor: "green",
+		paddingHorizontal: 20,
+		paddingVertical: 10,
+		borderRadius: 10,
 	},
 	cancelBtn: {
 		backgroundColor: "red",
 		paddingHorizontal: 20,
 		paddingVertical: 10,
-		borderRadius: 8,
+		borderRadius: 10,
 	},
 
 	// Timeline styles

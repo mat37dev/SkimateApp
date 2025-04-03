@@ -63,6 +63,7 @@ export default function MapScreen() {
 	const [searchModalVisible, setSearchModalVisible] = useState(false);
 	const [routeSegments, setRouteSegments] = useState<any[]>([]);
 	const [sheetOpen, setSheetOpen] = useState(false);
+	const [gpsMode, setGpsMode] = useState(false);
 
 	const [travelFilters, setTravelFilters] = useState({
 		runs: true,
@@ -114,6 +115,20 @@ export default function MapScreen() {
 		setRouteSegments([]);
 		setRouteFeature(null);
 		setSheetOpen(false);
+		setGpsMode(false);
+		// Reset camera: center on station, zoom out, and remove tilt
+		mapCameraRef.current?.setCamera({
+			centerCoordinate: [Number(selectedStation.longitude), Number(selectedStation.latitude)],
+			zoomLevel: 11,
+			pitch: 0, // remove tilt so it's 2D
+			animationDuration: 1000,
+		});
+	}
+
+	function lockingRoute() {
+		// You can call additional functions here (e.g. setLockingCamera, setRouteArrow) if needed
+		setSheetOpen(false);
+		setGpsMode(true);
 	}
 
 	const clearStorage = async () => {
@@ -329,6 +344,7 @@ export default function MapScreen() {
 				showEasy={showEasy}
 				showIntermediate={showIntermediate}
 				showExpert={showExpert}
+				gpsMode={gpsMode} // pass the new prop
 			/>
 			{/* Rounded Buttons */}
 			<View style={styles.centerCameraBtnContainer}>
@@ -358,6 +374,7 @@ export default function MapScreen() {
 					open={sheetOpen}
 					onToggle={() => setSheetOpen((prev) => !prev)}
 					onCancelTravel={onCancelTravel}
+					lockingRoute={lockingRoute}
 				/>
 			)}
 		</View>
