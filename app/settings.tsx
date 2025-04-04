@@ -249,14 +249,14 @@ const  SettingScreen: React.FC = () => {
                                 </TouchableOpacity>
                             </View>
                         </View>
-                       <View style={styles.btnsContainer}>
-                           <TouchableOpacity style={styles.adminBtn}>
-                               <Text style={{ color: text }} onPress={()=> router.push('/chat')}>Contacter un admin</Text>
-                           </TouchableOpacity>
-                           <TouchableOpacity style={styles.logoutBtn}>
-                               <Text style={[styles.logoutBtnText,{color:whiteText}]} onPress={handleLogout}> Déconnexion</Text>
-                           </TouchableOpacity>
-                       </View>
+                        <View style={styles.btnsContainer}>
+                            <TouchableOpacity style={styles.adminBtn}>
+                                <Text style={{ color: text }} onPress={()=> router.push('/chat')}>Contacter un admin</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.logoutBtn}>
+                                <Text style={[styles.logoutBtnText,{color:whiteText}]} onPress={handleLogout}> Déconnexion</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </ImageBackground>
@@ -280,6 +280,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom:50,
+        marginTop:50,
+        marginHorizontal: 20,
     },
     inputContainer: {
         marginBottom: 20,
@@ -291,13 +293,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         backgroundColor: '#fff',
         flexDirection: 'row',
+
     },
     input: {
-       width:280
+        width:280
     },
     editBtn:{
         marginTop:10,
-        fontSize:16
+        fontSize:16,
     },
     button: {
         backgroundColor: '#fff',
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 20,
         width:80,
+
     },
     button2: {
         backgroundColor: '#fff',
@@ -314,7 +318,7 @@ const styles = StyleSheet.create({
         paddingLeft:10,
         alignItems: 'center',
         marginTop: 20,
-        width:90,
+        width:95,
     },
     button3: {
         backgroundColor: '#fff',
@@ -324,6 +328,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 20,
         width:80,
+
     },
     buttonText: {
         color: '#0A3A5D',
@@ -370,7 +375,7 @@ const styles = StyleSheet.create({
         fontSize:12
     },
     text:{
-        marginTop:20,
+        marginTop:5,
         fontWeight:'bold',
         textTransform:"uppercase",
         color:"#0A3A5D"
