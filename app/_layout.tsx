@@ -13,7 +13,6 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import { MyLightTheme, MyDarkTheme } from '@/constants/navigationThemes';
 import NavBar from '@/components/NavBar';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import asyncStorage from "@react-native-async-storage/async-storage/src/AsyncStorage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,7 +27,7 @@ export default function Layout() {
 
       let userToken;
       if (Platform.OS === 'web'){
-        let userToken = await asyncStorage.getItem('token');
+        let userToken = await AsyncStorage.getItem('token');
       }else {
         let userToken = await SecureStore.getItemAsync('token');
       }
@@ -78,14 +77,11 @@ export default function Layout() {
             <Slot />
             {!hideNavbar && <NavBar />}
           </SafeAreaView>
-
           <StatusBar style="auto" />
         </ThemeProvider>
       </SafeAreaProvider>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   container: {

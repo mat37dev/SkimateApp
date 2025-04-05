@@ -40,7 +40,7 @@ const UserProfileScreen = () => {
         try {
             const savedImage = await AsyncStorage.getItem('userImage');
             if (savedImage) {
-                setImage(savedImage); // Set the image from AsyncStorage
+                setImage(savedImage);
             }
         } catch (error) {
             console.error("Error loading image:", error);
