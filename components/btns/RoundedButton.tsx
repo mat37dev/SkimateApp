@@ -17,16 +17,18 @@ export const RoundedButton = ({ onPress, style, children }: RoundedButtonProps) 
 
 const styles = StyleSheet.create({
 	button: {
-		width: 48,
-		height: 48,
-		borderRadius: 24,
+		width: 50,
+		height: 50,
+		borderRadius: 25,
 		backgroundColor: "#fff",
 		justifyContent: "center",
 		alignItems: "center",
 		// Optional: add shadow/elevation
 		shadowColor: "#000",
-		shadowOpacity: 0.2,
+		shadowOffset: { width: 0, height: 3 },
+		shadowOpacity: 0.3,
 		shadowRadius: 4,
-		elevation: 5,
+		// Shadow Android
+		elevation: 4,
 	},
 });

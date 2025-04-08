@@ -322,7 +322,7 @@ export default function MapScreen() {
 			{/* Search Bar */}
 			<View style={styles.searchBarContainer}>
 				<TouchableOpacity style={styles.searchBar} onPress={() => setSearchModalVisible(true)}>
-					<Text style={styles.searchBarText}>Search...</Text>
+					<Text style={styles.searchBarText}>Arpette, La Roche, etc.</Text>
 				</TouchableOpacity>
 			</View>
 			{/* SkiMap Component with filter props */}

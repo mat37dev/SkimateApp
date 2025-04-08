@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import MapboxGL from "@rnmapbox/maps";
 import { View, Text, Image } from "react-native";
 import styles from "@/styles/mapStyles";
@@ -113,11 +113,11 @@ export function SkiMap({
 		const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 		const y = Math.sin(Δλ) * Math.cos(φ2);
 		const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-		let θ = Math.atan2(y, x) * (180 / Math.PI);
+		let θ = (Math.atan2(y, x) * 180) / Math.PI;
 		return (θ + 360) % 360;
 	}
 
-	// Compute the angle using currentLocation and the next coordinate in the sampleRunCoordinates array.
+	// Compute the angle using currentLocation and the next coordinate in sampleRunCoordinates.
 	let computedAngle = 0;
 	if (gpsMode && sampleRunCoordinates.length > 0) {
 		const nextCoord =
@@ -125,8 +125,35 @@ export function SkiMap({
 		computedAngle = calculateBearing(currentLocation, nextCoord);
 	}
 
-	// Update camera heading and center whenever currentLocation (or computedAngle) changes.
+	// Compute arrival coordinate based on routeFeature.
+	// If routeFeature is an array (segmented routes), take the last feature's last coordinate.
+	// Otherwise, treat routeFeature as a single feature.
+	const arrivalCoordinate = useMemo(() => {
+		if (Array.isArray(routeFeature)) {
+			if (
+				routeFeature.length > 0 &&
+				routeFeature[routeFeature.length - 1].geometry &&
+				Array.isArray(routeFeature[routeFeature.length - 1].geometry.coordinates) &&
+				routeFeature[routeFeature.length - 1].geometry.coordinates.length > 0
+			) {
+				const coords = routeFeature[routeFeature.length - 1].geometry.coordinates;
+				return coords[coords.length - 1];
+			}
+			return null;
+		} else if (
+			routeFeature &&
+			routeFeature.geometry &&
+			Array.isArray(routeFeature.geometry.coordinates) &&
+			routeFeature.geometry.coordinates.length > 0
+		) {
+			return routeFeature.geometry.coordinates[routeFeature.geometry.coordinates.length - 1];
+		}
+		return null;
+	}, [routeFeature]);
+
+	// Update camera heading and center whenever currentLocation or computedAngle changes.
 	useEffect(() => {
+		console.log("arrival:", arrivalCoordinate);
 		if (gpsMode) {
 			mapCameraRef.current?.setCamera({
 				centerCoordinate: currentLocation,
@@ -136,12 +163,12 @@ export function SkiMap({
 				animationDuration: 1500,
 			});
 		}
-	}, [gpsMode, computedAngle, currentLocation]);
+	}, [gpsMode, computedAngle, currentLocation, arrivalCoordinate]);
 
-	// Simulation: Update currentLocation along the sampleRunCoordinates.
+	// Simulation: Update currentLocation along sampleRunCoordinates.
 	useEffect(() => {
+		console.log("arrival:", arrivalCoordinate);
 		if (gpsMode && sampleRunCoordinates.length > 0) {
-			// Start from the beginning.
 			let index = 0;
 			setCurrentLocation(sampleRunCoordinates[index]);
 			setCurrentIndex(index);
@@ -153,10 +180,10 @@ export function SkiMap({
 					setCurrentLocation(sampleRunCoordinates[index]);
 					setCurrentIndex(index);
 				}
-			}, 1500); // update every 2 seconds (adjust as needed)
+			}, 1500); // update every 1.5 seconds (adjust as needed)
 			return () => clearInterval(intervalId);
 		}
-	}, [gpsMode]);
+	}, [gpsMode, arrivalCoordinate]);
 
 	return (
 		<MapboxGL.MapView
@@ -175,11 +202,18 @@ export function SkiMap({
 					zip_line: require("../assets/mapIcons/zip_line.png"),
 					platter: require("../assets/mapIcons/platter.png"),
 					unknown: require("../assets/mapIcons/unknown.png"),
+					// Add your arrival flag here.
+					flag_checkered: require("../assets/mapIcons/flag-checkered-solid.svg"),
 				}}
 			/>
 
 			{is3D && (
-				<MapboxGL.RasterDemSource id='mapbox-dem' url='mapbox://mapbox.mapbox-terrain-dem-v1' tileSize={512} maxZoom={4.5}>
+				<MapboxGL.RasterDemSource
+					id='mapbox-dem'
+					url='mapbox://styles/baptlab/cm7kbr8wz008y01sb2hxsc5g9'
+					tileSize={512}
+					maxZoom={4.5}
+				>
 					<MapboxGL.Terrain sourceID='mapbox-dem' exaggeration={1.75} />
 				</MapboxGL.RasterDemSource>
 			)}
@@ -220,6 +254,7 @@ export function SkiMap({
 					/>
 				)}
 			</MapboxGL.PointAnnotation>
+
 			{/* Highlight selected feature */}
 			{selectedFeature && (
 				<MapboxGL.ShapeSource id='highlightSource' shape={{ type: "FeatureCollection", features: [selectedFeature] }}>
@@ -235,7 +270,7 @@ export function SkiMap({
 			)}
 
 			{/* Render calculated route */}
-			{routeFeature && (
+			{routeFeature && !Array.isArray(routeFeature) && (
 				<MapboxGL.ShapeSource id='routeSource' shape={routeFeature}>
 					{/* Dotted line for bridging/walking */}
 					<MapboxGL.LineLayer
@@ -248,7 +283,6 @@ export function SkiMap({
 							lineDasharray: [1, 1], // dotted
 						}}
 					/>
-
 					{/* Solid line for everything else */}
 					<MapboxGL.LineLayer
 						id='normalLayer'
@@ -260,6 +294,30 @@ export function SkiMap({
 						}}
 					/>
 				</MapboxGL.ShapeSource>
+			)}
+
+			{/* If routeFeature is an array (segmented route), you might also render each feature */}
+			{Array.isArray(routeFeature) &&
+				routeFeature.map((feature: any, index: number) => (
+					<MapboxGL.ShapeSource key={`routeSource-${index}`} id={`routeSource-${index}`} shape={feature}>
+						<MapboxGL.LineLayer
+							id={`normalLayer-${index}`}
+							style={{
+								lineColor: ["get", "color"],
+								lineWidth: 4,
+								lineOpacity: 1,
+							}}
+						/>
+					</MapboxGL.ShapeSource>
+				))}
+
+			{/* Arrival Marker (displayed only if arrivalCoordinate is available) */}
+			{arrivalCoordinate && (
+				<MapboxGL.PointAnnotation id='arrivalMarker' coordinate={arrivalCoordinate}>
+					<View style={{ padding: 5 }}>
+						<Image source={require("../assets/mapIcons/flag-checkered-solid.svg")} style={{ width: 30, height: 30 }} />
+					</View>
+				</MapboxGL.PointAnnotation>
 			)}
 
 			{/* Station boundary */}
@@ -324,7 +382,7 @@ export function SkiMap({
 						style={{
 							symbolPlacement: "line",
 							symbolSpacing: 200,
-							textField: "▶▶",
+							textField: "▶",
 							textSize: 30,
 							textColor: "black",
 							textHaloWidth: 0,

@@ -32,7 +32,7 @@ export const SearchModal = ({
 					</TouchableOpacity>
 					<TextInput
 						style={styles.searchModalInput}
-						placeholder='Search...'
+						placeholder='Arpette, La Roche, etc.'
 						value={searchQuery}
 						onChangeText={handleSearch} // call handleSearch on every text change
 					/>
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
 		marginLeft: 10,
 		borderWidth: 1,
 		borderColor: "#ccc",
-		borderRadius: 4,
+		borderRadius: 25,
 		padding: 8,
 	},
 	centered: {
