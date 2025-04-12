@@ -1,27 +1,45 @@
-// app/_layout.tsx
-import {NavigationContainer, ThemeProvider} from '@react-navigation/native';
+import { ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Slot, usePathname } from 'expo-router';
+import { Slot, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
-
+import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
-
+import {Platform, StyleSheet} from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { MyLightTheme, MyDarkTheme } from '@/constants/navigationThemes';
 import NavBar from '@/components/NavBar';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function Layout() {
   const colorScheme = useColorScheme();
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const router = useRouter();
 
-  // Chargement des polices
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+
+      let userToken;
+      if (Platform.OS === 'web'){
+        let userToken = await AsyncStorage.getItem('token');
+      }else {
+        let userToken = await SecureStore.getItemAsync('token');
+      }
+      if (userToken) {
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    };
+    checkLoginStatus();
+  }, []);
+
   const [fontsLoaded] = useFonts({
     SpaceMono: require('@/assets/fonts/SpaceMono-Regular.ttf'),
   });
@@ -32,24 +50,33 @@ export default function Layout() {
     }
   }, [fontsLoaded]);
 
-  // Détermine si la NavBar doit être masquée
+  useEffect(() => {
+
+    if (fontsLoaded && isLoggedIn !== null) {
+      if (isLoggedIn) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [fontsLoaded, isLoggedIn, router]);
+
   const hideNavbar = pathname === '/login' || pathname === '/register';
 
   const backgroundColor = useThemeColor({}, 'background');
   const navigationTheme = colorScheme === 'dark' ? MyDarkTheme : MyLightTheme;
 
   if (!fontsLoaded) {
-    return null; // le splash reste visible
+    return null;
   }
+
   return (
       <SafeAreaProvider>
         <ThemeProvider value={navigationTheme}>
           <SafeAreaView style={[styles.container, { backgroundColor }]}>
-              <Slot />
-            {/* NavBar globale en bas, sauf si "hideNavbar" */}
+            <Slot />
             {!hideNavbar && <NavBar />}
           </SafeAreaView>
-
           <StatusBar style="auto" />
         </ThemeProvider>
       </SafeAreaProvider>
