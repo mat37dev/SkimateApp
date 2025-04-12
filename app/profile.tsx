@@ -64,8 +64,13 @@ const UserProfileScreen = () => {
                     aspect: [1, 1],
                     quality: 1,
                 });
+            }else if (option === "remove") {
+                    await AsyncStorage.removeItem('userImage');
+                    setImage(null);
+                    setModalVisible(false);
+                    console.log("Image supprimée avec succès");
             }
-            if (!result.canceled) {
+            if (result && !result.canceled && result.assets?.length > 0) {
                 await saveImage(result.assets[0].uri);
             }
         } catch (error) {
@@ -81,12 +86,6 @@ const UserProfileScreen = () => {
         } catch (error) {
             console.error("Error saving image:", error);
         }
-    };
-
-    const removeImage = () => {
-        setImage(null);
-        setModalVisible(false);
-        AsyncStorage.removeItem('userImage');
     };
 
     useEffect(() => {
@@ -191,7 +190,6 @@ const styles = StyleSheet.create({
     },
     profileHeader: {
         alignItems: 'center',
-        marginBottom: 30,
         position: "relative",
     },
     avatar: {
@@ -201,10 +199,9 @@ const styles = StyleSheet.create({
     },
     cameraIcon: {
         position: "absolute",
-        top: 80,
+        top: 85,
         right:0,
-        backgroundColor: '#003566',
-        padding: 8,
+        padding: 5,
         borderRadius: 50,
         borderWidth: 2,
         borderColor: "#fff",

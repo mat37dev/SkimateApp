@@ -3,7 +3,7 @@ import {Modal, View, Text, Button, StyleSheet, TouchableOpacity} from 'react-nat
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-const UploadImage = ({ isVisible, onClose, onOptionSelected }) => {
+const UploadImage = ({ isVisible, onClose, onOptionSelected  }) => {
     return (
         <Modal
             visible={isVisible}
