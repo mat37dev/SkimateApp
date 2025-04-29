@@ -4,23 +4,7 @@ import { ScrollView, Text, View } from "react-native";
 import Checkbox from "expo-checkbox";
 import { AppModal } from "@/components/AppModal";
 import styles from "@/styles/mapStyles";
-
-interface FilterModalProps {
-	visible: boolean;
-	onClose: () => void;
-	showLifts: boolean;
-	setShowLifts: (value: boolean) => void;
-	showRuns: boolean;
-	setShowRuns: (value: boolean) => void;
-	showNovice: boolean;
-	setShowNovice: (value: boolean) => void;
-	showEasy: boolean;
-	setShowEasy: (value: boolean) => void;
-	showIntermediate: boolean;
-	setShowIntermediate: (value: boolean) => void;
-	showExpert: boolean;
-	setShowExpert: (value: boolean) => void;
-}
+import { FilterModalProps } from "@/interfaces/logic/FilterModal";
 
 export const FilterModal = ({
 	visible,

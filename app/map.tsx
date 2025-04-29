@@ -1,4 +1,6 @@
 import MapboxGL from "@rnmapbox/maps";
+import { PermissionsAndroid, Platform } from "react-native";
+import Geolocation from "@react-native-community/geolocation";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { View, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -22,6 +24,11 @@ import { SkiMap } from "@/components/SkiMap";
 import { FontAwesome6, Ionicons } from "@expo/vector-icons";
 import { useSkiMap } from "@/hooks/useSkiMap";
 
+//Hooks
+import { centerOnStation, centerOnUser, resetToStation2D, setCameraToCoordinates } from "@/hooks/useCamera";
+import { LoadingModal } from "@/components/Modals/LoadingModal";
+import { getLocation, useUserLocation } from "@/hooks/useUserLocation";
+
 export default function MapScreen() {
 	const backgroundColor = useThemeColor({}, "background");
 	const mapCameraRef = useRef<any>(null);
@@ -29,17 +36,13 @@ export default function MapScreen() {
 	// State for modals and map loading
 	const [travelModalVisible, setTravelModalVisible] = useState(false);
 	const [isSearching, setIsSearching] = useState(false);
-	const [mapLoading, setMapLoading] = useState(true);
 	const [routeFeature, setRouteFeature] = useState<any>(null);
-
-	// Set Mapbox token on mount
-	useEffect(() => {
-		MapboxGL.setAccessToken("pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A");
-	}, []);
+	const [mapReady, setMapReady] = useState(false);
 
 	// Data fetching hooks
-	const { stations, dropdownItems, selectedStation, setSelectedStation } = useStations();
-	const { stationData, stationCoordinates, assets } = useStationData(selectedStation);
+	const { stations, dropdownItems, selectedStation, setSelectedStation, isLoading: stationsLoading } = useStations();
+	const { stationData, stationCoordinates, assets, isLoading: stationDataLoading } = useStationData(selectedStation);
+	const loading = stationsLoading || stationDataLoading || !mapReady;
 
 	// Extract search/filter & graph logic from useSkiMap hook
 	const { searchQuery, setSearchQuery, searchResults, isSearching: hookIsSearching, handleSearch, combinedList } = useSkiMap(assets);
@@ -57,6 +60,8 @@ export default function MapScreen() {
 	const [showEasy, setShowEasy] = useState(true);
 	const [showIntermediate, setShowIntermediate] = useState(true);
 	const [showExpert, setShowExpert] = useState(true);
+	const [showDestinationPoint, setShowDestinationPoint] = useState(false);
+	const [destinationCoord, setDestinationCoord] = useState<number[] | null>(null);
 
 	const [infoModalVisible, setInfoModalVisible] = useState(false);
 	const [selectedFeature, setSelectedFeature] = useState<any>(null);
@@ -74,32 +79,55 @@ export default function MapScreen() {
 		expert: true,
 	});
 
-	// Calculate camera center (default to station if available)
-	const cameraCenter = selectedStation ? [selectedStation.longitude, selectedStation.latitude] : [6.7483232, 45.5203648];
 	const stationGeoJson: { type: string; features: any[] } = stationCoordinates ?? { type: "FeatureCollection", features: [] };
 
-	const centerCameraOnStation = () => {
-		if (selectedStation?.longitude && selectedStation?.latitude) {
-			mapCameraRef.current?.setCamera({
-				centerCoordinate: [Number(selectedStation.longitude), Number(selectedStation.latitude)],
-				zoomLevel: 11,
-				animationDuration: 1000,
-			});
-		} else {
-			console.warn("No valid coordinates for the selected station.");
+	useEffect(() => {
+		if (showDestinationPoint && destinationCoord) {
+			console.log("showDestinationPoint : ", showDestinationPoint);
+			console.log("destinationCoord : ", destinationCoord);
+
+			console.log("destinationCoord →", destinationCoord);
+		}
+	}, [showDestinationPoint, destinationCoord]);
+
+	// Set Mapbox token on mount
+	useEffect(() => {
+		MapboxGL.setAccessToken("pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A");
+	}, []);
+
+	useEffect(() => {
+		(async () => {
+			const granted = await MapboxGL.requestAndroidLocationPermissions();
+			if (granted) {
+				MapboxGL.locationManager.start();
+			} else {
+				console.warn("Location permission denied");
+			}
+		})();
+
+		// only runs on unmount
+		return () => {
+			MapboxGL.locationManager.stop();
+		};
+	}, []);
+
+	//For testing purposes, the data are usually stored in the cache
+	const clearStorage = async () => {
+		try {
+			await AsyncStorage.clear();
+		} catch (error) {
+			console.error("Error clearing AsyncStorage:", error);
 		}
 	};
 
-	const centerCameraOnUser = () => {
-		mapCameraRef.current?.setCamera({
-			centerCoordinate: userLocation,
-			zoomLevel: 15,
-			animationDuration: 1000,
-		});
-	};
+	// Real user location (will be set once we fetch it, default to station)
+	const { location: userLocation, error: locationError } = useUserLocation({
+		distanceFilter: 10, // only update if moved 10m, tweak to your liking
+		interval: 5000, // poll every 5s on Android
+	});
 
-	// Mocked user location
-	const [userLocation] = useState<[number, number]>([6.7307541, 45.497037]);
+	// Calculate camera center (default to station if available)
+	const cameraCenter = userLocation ? [userLocation[0], userLocation[1]] : [6.7483232, 45.5203648];
 
 	// Handle dropdown changes (Station Select)
 	const handleStationChange = (osmId: string) => {
@@ -111,33 +139,14 @@ export default function MapScreen() {
 		}
 	};
 
-	function onCancelTravel() {
-		setRouteSegments([]);
-		setRouteFeature(null);
-		setSheetOpen(false);
-		setGpsMode(false);
-		// Reset camera: center on station, zoom out, and remove tilt
-		mapCameraRef.current?.setCamera({
-			centerCoordinate: [Number(selectedStation.longitude), Number(selectedStation.latitude)],
-			zoomLevel: 11,
-			pitch: 0, // remove tilt so it's 2D
-			animationDuration: 1000,
-		});
-	}
-
 	function lockingRoute() {
-		// You can call additional functions here (e.g. setLockingCamera, setRouteArrow) if needed
 		setSheetOpen(false);
 		setGpsMode(true);
-	}
-
-	const clearStorage = async () => {
-		try {
-			await AsyncStorage.clear();
-		} catch (error) {
-			console.error("Error clearing AsyncStorage:", error);
+		if (userLocation) {
+			// userLocation is [lon, lat] (make sure you swapped to [lon,lat])
+			centerOnUser(mapCameraRef, userLocation);
 		}
-	};
+	}
 
 	// Feature selection method
 	const handleFeatureSelect = (feature: any) => {
@@ -160,11 +169,7 @@ export default function MapScreen() {
 				? selected.geometry.coordinates[Math.floor(selected.geometry.coordinates.length / 2)]
 				: selected.geometry.coordinates;
 		console.log("target coord:", targetCoord);
-		mapCameraRef.current?.setCamera({
-			centerCoordinate: targetCoord,
-			zoomLevel: 15,
-			animationDuration: 1000,
-		});
+		setCameraToCoordinates(mapCameraRef, targetCoord);
 		setRouteFeature(null);
 		setSelectedFeature(selected);
 		setInfoModalVisible(true);
@@ -192,21 +197,29 @@ export default function MapScreen() {
 			return;
 		}
 		const { segmentedGeoJSON, destinationCoord } = result;
+		console.log("🏁 Arrival destination:", destinationCoord);
 		setRouteFeature(segmentedGeoJSON);
-		mapCameraRef.current?.setCamera({
-			centerCoordinate: destinationCoord,
-			zoomLevel: 15,
-			animationDuration: 1000,
-		});
+		setCameraToCoordinates(mapCameraRef, destinationCoord);
 		setSelectedFeature(null);
 		setTravelModalVisible(false);
 		setRouteSegments(segmentedGeoJSON.features);
 		setSheetOpen(true);
+
+		setDestinationCoord(destinationCoord);
+		setShowDestinationPoint(true);
 	}
 
-	const onMapDidFinishRendering = () => {
-		setMapLoading(false);
-	};
+	function onCancelTravel() {
+		setRouteSegments([]);
+		setRouteFeature(null);
+		setSheetOpen(false);
+		setGpsMode(false);
+		// Reset camera: center on station, zoom out, and remove tilt
+		resetToStation2D(mapCameraRef, Number(selectedStation?.longitude), Number(selectedStation?.latitude));
+
+		setShowDestinationPoint(false);
+		setDestinationCoord(null);
+	}
 
 	// Define runLayers to pass to SkiMap
 	const runLayers = (shapeId: string, lineId: string, color: string, labelId: string, arrowId: string, shapeData: any) => {
@@ -278,6 +291,7 @@ export default function MapScreen() {
 				/>
 			</View>
 			{/* Modals */}
+			<LoadingModal visible={loading} onClose={() => {}} />
 			<FilterModal
 				visible={filterModal.visible}
 				onClose={filterModal.closeModal}
@@ -329,13 +343,15 @@ export default function MapScreen() {
 			<SkiMap
 				cameraCenter={cameraCenter}
 				is3D={is3D}
+				onMapLoad={() => setMapReady(true)}
 				userLocation={userLocation}
 				mapCameraRef={mapCameraRef}
 				selectedFeature={selectedFeature}
 				routeFeature={routeFeature}
 				stationGeoJson={stationGeoJson}
 				assets={assets}
-				onMapDidFinishRendering={onMapDidFinishRendering}
+				showDestinationPoint={showDestinationPoint}
+				destinationCoord={destinationCoord}
 				onMapFeaturePress={handleMapFeaturePress}
 				runLayers={runLayers}
 				showRuns={showRuns}
@@ -348,13 +364,27 @@ export default function MapScreen() {
 			/>
 			{/* Rounded Buttons */}
 			<View style={styles.centerCameraBtnContainer}>
-				<RoundedButton onPress={centerCameraOnStation}>
+				<RoundedButton
+					onPress={() => centerOnStation(mapCameraRef, Number(selectedStation?.longitude), Number(selectedStation?.latitude))}
+				>
 					<FontAwesome6 name='arrows-to-circle' size={24} color='black' />
 				</RoundedButton>
 			</View>
+
 			<View style={styles.userCenterBtnContainer}>
-				<RoundedButton onPress={centerCameraOnUser}>
-					<Ionicons name='locate' size={24} color='black' />
+				<RoundedButton
+					disabled={!userLocation}
+					onPress={() => {
+						console.log("centering on user location : ", userLocation);
+						if (!userLocation) return;
+						mapCameraRef.current?.setCamera({
+							centerCoordinate: userLocation,
+							zoomLevel: 15,
+							animationDuration: 1000,
+						});
+					}}
+				>
+					<Ionicons name='locate' size={24} color={userLocation ? "black" : "gray"} />
 				</RoundedButton>
 			</View>
 			<View style={styles.mapStyleBtnContainer}>

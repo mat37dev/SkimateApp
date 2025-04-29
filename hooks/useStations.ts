@@ -2,26 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchStations, fetchStationsData } from "@/api/skiApi";
-
-export interface Station {
-	osmId: string;
-	name: string;
-	longitude: number;
-	latitude: number;
-	// add other station properties as needed
-}
-
-interface UseStationsResult {
-	stations: Station[];
-	dropdownItems: { label: string; value: string }[];
-	selectedStation: Station | null;
-	setSelectedStation: (station: Station) => void;
-}
+import { Station, UseStationsResult } from "@/interfaces/datas/StationData";
 
 export const useStations = (): UseStationsResult => {
 	const [stations, setStations] = useState<Station[]>([]);
 	const [dropdownItems, setDropdownItems] = useState<{ label: string; value: string }[]>([]);
 	const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
 	const hasFetchedStations = useRef(false);
@@ -78,11 +65,13 @@ export const useStations = (): UseStationsResult => {
 			} finally {
 				hasFetchedStations.current = true;
 				isFetching.current = false;
+				setIsLoading(false);
+				console.log("Station Infos retrieved !");
 			}
 		};
 
 		getStations();
 	}, []);
 
-	return { stations, dropdownItems, selectedStation, setSelectedStation };
+	return { stations, dropdownItems, selectedStation, setSelectedStation, isLoading };
 };

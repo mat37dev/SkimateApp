@@ -112,6 +112,7 @@ const stylesSheet = StyleSheet.create({
 	},
 	footer: {
 		padding: 10,
+		marginBottom: 10,
 		alignItems: "center",
 		flex: 2,
 		flexDirection: "row",
@@ -123,12 +124,22 @@ const stylesSheet = StyleSheet.create({
 		paddingHorizontal: 20,
 		paddingVertical: 10,
 		borderRadius: 10,
+		shadowColor: "#000",
+		shadowOpacity: 0.3,
+		shadowRadius: 1,
+		elevation: 1,
+		borderColor: "#ccc",
 	},
 	cancelBtn: {
 		backgroundColor: "red",
 		paddingHorizontal: 20,
 		paddingVertical: 10,
 		borderRadius: 10,
+		shadowColor: "#000",
+		shadowOpacity: 0.3,
+		shadowRadius: 1,
+		elevation: 1,
+		borderColor: "#ccc",
 	},
 
 	// Timeline styles

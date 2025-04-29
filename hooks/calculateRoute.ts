@@ -331,7 +331,7 @@ export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 export function calculateRouteForFeature(
 	selectedFeature: any,
 	direction: "top" | "bottom",
-	userLocation: [number, number],
+	userLocation: [number, number] | null,
 	combinedList: any[],
 	allowedFilters?: {
 		runs: boolean;

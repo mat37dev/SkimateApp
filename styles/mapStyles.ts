@@ -8,6 +8,33 @@ const styles = StyleSheet.create({
 		bottom: 60,
 		right: 20,
 	},
+
+	destinationIcon: {
+		width: 32,
+		height: 32,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+
+	userMarker: {
+		zIndex: 999,
+		padding: 10,
+		backgroundColor: "rgba(255,255,255,0.3)",
+		borderRadius: 25,
+	},
+	arrow: {
+		width: 30,
+		height: 30,
+		// no transform here—it's applied inline above
+	},
+	circle: {
+		width: 20,
+		height: 20,
+		borderRadius: 10,
+		backgroundColor: "blue",
+		borderWidth: 3,
+		borderColor: "#fff",
+	},
 	mapStyleBtn: {
 		backgroundColor: "#fff",
 		borderRadius: 8,
@@ -75,11 +102,13 @@ const styles = StyleSheet.create({
 	},
 	modalContainer: {
 		backgroundColor: "#fff",
-		borderTopRightRadius: 16,
-		borderTopLeftRadius: 16,
+		borderRadius: 16,
 		padding: 16,
 		height: "40%",
 		maxHeight: "70%",
+		marginBottom: 15,
+		marginRight: 10,
+		marginLeft: 10,
 	},
 	modalTitle: {
 		fontSize: 18,
@@ -87,6 +116,7 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	checkboxRow: {
+		gap: 5,
 		flexDirection: "row",
 		alignItems: "center",
 		marginVertical: 4,

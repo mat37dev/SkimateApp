@@ -2,33 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchStationsData, fetchStationCoordinates } from "@/api/skiApi";
-
-export interface StationData {
-	// Define properties returned by fetchStationsData
-	domain: string;
-	// ...other properties
-}
-
-export interface StationCoordinates {
-	type: string;
-	features: any[];
-}
-
-export interface StationAssets {
-	runs: any; // Can be further typed into a structure grouping difficulties
-	lifts: any;
-}
-
-interface UseStationDataResult {
-	stationData: StationData | null;
-	stationCoordinates: StationCoordinates | null;
-	assets: StationAssets | null;
-}
+import { StationAssets, StationCoordinates, StationData, UseStationDataResult } from "@/interfaces/datas/StationData";
 
 export const useStationData = (station: { osmId: string; name: string } | null): UseStationDataResult => {
 	const [stationData, setStationData] = useState<StationData | null>(null);
 	const [stationCoordinates, setStationCoordinates] = useState<StationCoordinates | null>(null);
 	const [assets, setAssets] = useState<StationAssets | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
 
@@ -79,11 +59,13 @@ export const useStationData = (station: { osmId: string; name: string } | null):
 				console.error("Error fetching station data:", error);
 			} finally {
 				isFetching.current = false;
+				setIsLoading(false);
+				console.log("Stations Data retrieved !");
 			}
 		};
 
 		getStationData();
 	}, [station]);
 
-	return { stationData, stationCoordinates, assets };
+	return { stationData, stationCoordinates, assets, isLoading };
 };

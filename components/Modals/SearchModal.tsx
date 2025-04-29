@@ -3,16 +3,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppModal } from "@/components/AppModal";
-
-interface SearchModalProps {
-	visible: boolean;
-	onClose: () => void;
-	searchQuery: string;
-	handleSearch: (text: string) => void; // use handleSearch function instead of setSearchQuery
-	isSearching: boolean;
-	searchResults: any[];
-	onSearchItemPress: (item: any) => void;
-}
+import { SearchModalProps } from "@/interfaces/logic/SearchModal";
 
 export const SearchModal = ({
 	visible,

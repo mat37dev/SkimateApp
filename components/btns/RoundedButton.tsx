@@ -1,11 +1,6 @@
 import React from "react";
-import { TouchableOpacity, StyleSheet, StyleProp, ViewStyle, View } from "react-native";
-
-interface RoundedButtonProps {
-	onPress: () => void;
-	style?: StyleProp<ViewStyle>;
-	children?: React.ReactNode; // So we can pass icons or text
-}
+import { TouchableOpacity, StyleSheet } from "react-native";
+import { RoundedButtonProps } from "@/interfaces/components/RoundedBtn";
 
 export const RoundedButton = ({ onPress, style, children }: RoundedButtonProps) => {
 	return (

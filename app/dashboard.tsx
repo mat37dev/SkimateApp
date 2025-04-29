@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Animated, StyleSheet, View, Text, TextInput, TouchableOpacity, ImageSourcePropType } from "react-native";
+import { Animated, StyleSheet, View, Text, TextInput, TouchableOpacity } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import CollapsibleHeader from "../components/CollapsibleHeader";
 import { Card } from "@/components/Card";
@@ -13,21 +13,7 @@ import { StationStatsCard } from "@/components/DashboardCards/StationStatsCard";
 import { ListDomainStationsCard } from "@/components/DashboardCards/ListDomainStationsCard";
 import { StationListItem } from "@/components/StationListItem";
 import CommentCard from "@/components/DashboardCards/CommentCard";
-
-interface StationInfo {
-	name: string;
-	domain: string;
-	website: string;
-	emergencyPhone: string;
-	altitudeMin?: number | null;
-	altitudeMax?: number | null;
-	distanceSlope?: number | null;
-	countEasy?: number | null;
-	countIntermediate?: number | null;
-	countAdvanced?: number | null;
-	countExpert?: number | null;
-	logo?: ImageSourcePropType | null;
-}
+import { StationInfo } from "@/interfaces/datas/StationsInfos";
 
 export default function DashboardScreen() {
 	// Gestion du scroll pour le header collapsant

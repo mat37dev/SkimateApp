@@ -1,15 +1,9 @@
-// components/Modals/InfoModal.tsx
+import styles from "@/styles/mapStyles";
+
 import React from "react";
 import { ScrollView, Text, View, TouchableOpacity } from "react-native";
 import { AppModal } from "@/components/AppModal";
-import styles from "@/styles/mapStyles";
-
-interface InfoModalProps {
-	visible: boolean;
-	onClose: () => void;
-	selectedFeature: any;
-	onTravel: () => void;
-}
+import { InfoModalProps } from "@/interfaces/logic/InfosModal";
 
 export const InfoModal = ({ visible, onClose, selectedFeature, onTravel }: InfoModalProps) => {
 	if (!selectedFeature) return null;
