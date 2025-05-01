@@ -95,22 +95,6 @@ export default function MapScreen() {
 		MapboxGL.setAccessToken("pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A");
 	}, []);
 
-	useEffect(() => {
-		(async () => {
-			const granted = await MapboxGL.requestAndroidLocationPermissions();
-			if (granted) {
-				MapboxGL.locationManager.start();
-			} else {
-				console.warn("Location permission denied");
-			}
-		})();
-
-		// only runs on unmount
-		return () => {
-			MapboxGL.locationManager.stop();
-		};
-	}, []);
-
 	//For testing purposes, the data are usually stored in the cache
 	const clearStorage = async () => {
 		try {
@@ -142,10 +126,6 @@ export default function MapScreen() {
 	function lockingRoute() {
 		setSheetOpen(false);
 		setGpsMode(true);
-		if (userLocation) {
-			// userLocation is [lon, lat] (make sure you swapped to [lon,lat])
-			centerOnUser(mapCameraRef, userLocation);
-		}
 	}
 
 	// Feature selection method

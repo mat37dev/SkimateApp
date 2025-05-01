@@ -49,6 +49,7 @@ export function SkiMap({
 			onMapLoad?.();
 		}
 	};
+	useEffect(() => {}, [userLocation]);
 
 	return (
 		<MapboxGL.MapView
@@ -288,26 +289,35 @@ export function SkiMap({
 				</MapboxGL.PointAnnotation>
 			)}
 
-			{gpsMode ? (
-				// GPS‐follow mode
+			{gpsMode && userLocation ? (
+				// GPS “manual follow” mode with fixed 45° tilt
 				<MapboxGL.Camera
 					ref={mapCameraRef}
-					followUserLocation={true}
-					followUserMode={UserTrackingMode.FollowWithCourse} // ← use the enum
-					followZoomLevel={22}
-					// we don’t supply centerCoordinate/zoomLevel here—
-					// Mapbox takes care of following
-					followPitch={65} // ← use followPitch when in follow mode
+					centerCoordinate={userLocation}
+					zoomLevel={18}
+					pitch={45}
+					animationMode='flyTo'
+					animationDuration={1500}
 				/>
 			) : is3D ? (
 				// 3D overview mode
-				<MapboxGL.Camera ref={mapCameraRef} followUserLocation={false} zoomLevel={11} centerCoordinate={cameraCenter} pitch={70} />
+				<MapboxGL.Camera ref={mapCameraRef} zoomLevel={11} centerCoordinate={cameraCenter} pitch={70} />
 			) : (
 				// Plain 2D mode
-				<MapboxGL.Camera ref={mapCameraRef} followUserLocation={false} zoomLevel={11} centerCoordinate={cameraCenter} pitch={0} />
+				<MapboxGL.Camera ref={mapCameraRef} zoomLevel={11} centerCoordinate={cameraCenter} pitch={0} />
 			)}
-
-			<MapboxGL.UserLocation visible showsUserHeadingIndicator={gpsMode} androidRenderMode={gpsMode ? "compass" : "normal"} />
+			<MapboxGL.UserLocation
+				onUpdate={(location) => {
+					console.log("[MapboxGL.UserLocation] onUpdate:", {
+						lon: location.coords.longitude,
+						lat: location.coords.latitude,
+						accuracy: location.coords.accuracy,
+					});
+				}}
+				visible
+				showsUserHeadingIndicator={gpsMode}
+				androidRenderMode={gpsMode ? "compass" : "normal"}
+			/>
 		</MapboxGL.MapView>
 	);
 }
