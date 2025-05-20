@@ -49,7 +49,7 @@ export default function MapScreen() {
 
 	// Local UI state
 	const [open, setOpen] = useState(false);
-	const [is3D, setIs3D] = useState(false);
+	const [is3D, setIs3D] = useState(true);
 	const toggleMapStyle = () => setIs3D((prev) => !prev);
 	const filterModal = useModal();
 
@@ -111,7 +111,7 @@ export default function MapScreen() {
 	});
 
 	// Calculate camera center (default to station if available)
-	const cameraCenter = userLocation ? [userLocation[0], userLocation[1]] : [6.7483232, 45.5203648];
+	const cameraCenter = selectedStation ? [Number(selectedStation.longitude), Number(selectedStation?.latitude)] : [6.7483232, 45.5203648];
 
 	// Handle dropdown changes (Station Select)
 	const handleStationChange = (osmId: string) => {
@@ -127,27 +127,18 @@ export default function MapScreen() {
 		setSheetOpen(false);
 		setGpsMode(true);
 	}
-
-	// Feature selection method
 	const handleFeatureSelect = (feature: any) => {
 		console.log("feature selected:", feature);
+		console.log("tapped feature.id:", feature.id);
 		setSearchModalVisible(false);
-		const featureCategory = feature.category || feature.properties?.category;
-		const featureName = feature.properties?.name;
-		const compositeKey = featureCategory + "_" + featureName;
-		let selected = feature;
-		if (compositeKey) {
-			const found = combinedList.find(
-				(item) => (item.category || item.properties?.category) + "_" + item.properties?.name === compositeKey
-			);
-			if (found) {
-				selected = found;
-			}
-		}
+
+		const selected = combinedList.find((item) => item.id === feature.id) || feature;
+
 		const targetCoord =
 			selected.geometry.type === "LineString"
 				? selected.geometry.coordinates[Math.floor(selected.geometry.coordinates.length / 2)]
 				: selected.geometry.coordinates;
+
 		console.log("target coord:", targetCoord);
 		setCameraToCoordinates(mapCameraRef, targetCoord);
 		setRouteFeature(null);

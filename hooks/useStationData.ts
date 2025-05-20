@@ -46,6 +46,33 @@ export const useStationData = (station: { osmId: string; name: string } | null):
 					lifts = fetchedData.lifts || {};
 
 					// Cache the fetched data
+
+					// create a counter scoped to this station-load
+					let idCounter = 0;
+
+					// helper to walk a FeatureCollection and give each feature a unique numeric id
+					const injectIncrementalId = (fc) => ({
+						...fc,
+						features: fc.features.map((f) => ({
+							...f,
+							id: idCounter++, // will be 0,1,2,3,... across *all* runs & lifts
+						})),
+					});
+
+					// re‐wrap all your raw FCs with injected ids
+					runs = {
+						easy: injectIncrementalId(runs.easy || { features: [] }),
+						novice: injectIncrementalId(runs.novice || { features: [] }),
+						intermediate: injectIncrementalId(runs.intermediate || { features: [] }),
+						expert: injectIncrementalId(runs.expert || { features: [] }),
+						nullDiff: injectIncrementalId(runs.nullDiff || { features: [] }),
+						unknown: injectIncrementalId(runs.unknown || { features: [] }),
+					};
+					lifts = {
+						liftLines: injectIncrementalId(lifts.liftLines || { features: [] }),
+						liftStartPoints: injectIncrementalId(lifts.liftStartPoints || { features: [] }),
+					};
+
 					await AsyncStorage.setItem(`stationData-${station.osmId}`, JSON.stringify(storedStationData));
 					await AsyncStorage.setItem(`stationsDelimitations-${station.osmId}`, JSON.stringify(storedDelimitations));
 					await AsyncStorage.setItem(`stationRuns-${station.osmId}`, JSON.stringify(runs));

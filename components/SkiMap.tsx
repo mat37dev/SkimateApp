@@ -51,10 +51,26 @@ export function SkiMap({
 	};
 	useEffect(() => {}, [userLocation]);
 
+	//values for bounding camera in a square
+	const BOUNDS = {
+		//north-east square angle
+		ne: [6.95, 45.65],
+		//south-west square angle
+		sw: [6.6, 45.4],
+		padding: { top: 20, bottom: 20, left: 20, right: 20 },
+	};
+
 	return (
 		<MapboxGL.MapView
 			style={styles.map}
 			styleURL='mapbox://styles/baptlab/cm7kbr8wz008y01sb2hxsc5g9'
+			onRegionDidChange={({ geometry: { coordinates } }) => {
+				const [lng, lat] = coordinates;
+				// si on est hors zone, on recentre sur la station
+				if (lng < BOUNDS.sw[0] || lng > BOUNDS.ne[0] || lat < BOUNDS.sw[1] || lat > BOUNDS.ne[1]) {
+					mapCameraRef.current?.flyTo(cameraCenter, 1000);
+				}
+			}}
 			onDidFinishLoadingMap={() => {
 				console.log("Map style loaded");
 				notifyLoad();
@@ -78,12 +94,14 @@ export function SkiMap({
 
 			{is3D && (
 				<MapboxGL.RasterDemSource
-					id='mapbox-dem'
-					url='mapbox://styles/baptlab/cm7kbr8wz008y01sb2hxsc5g9'
-					tileSize={512}
-					maxZoom={4.5}
+					id='terrainSource'
+					tileUrlTemplates={[
+						`https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A`,
+					]}
+					tileSize={256}
+					maxZoomLevel={14}
 				>
-					<MapboxGL.Terrain sourceID='mapbox-dem' exaggeration={1.75} />
+					<MapboxGL.Terrain style={{ exaggeration: 1.75 }} />
 				</MapboxGL.RasterDemSource>
 			)}
 
