@@ -168,8 +168,8 @@ export function SkiMap({
 						id='stationLayer'
 						style={{
 							lineColor: "#1E90FF",
-							lineWidth: 3.5,
-							lineOpacity: 0.5,
+							lineWidth: 2,
+							lineOpacity: 1,
 							lineJoin: "round",
 							lineCap: "round",
 						}}
@@ -179,7 +179,7 @@ export function SkiMap({
 						style={{
 							symbolPlacement: "line",
 							textField: ["get", "domain"],
-							textSize: 16,
+							textSize: 15,
 							textColor: "#1E90FF",
 							textHaloWidth: 2,
 							textHaloColor: "#ffffff",
@@ -198,17 +198,26 @@ export function SkiMap({
 						id='liftLineLayer'
 						style={{
 							lineColor: "black",
-							lineWidth: 2.5,
+							lineWidth: [
+								"interpolate",
+								["linear"],
+								["zoom"],
+								10,
+								0.8, // far out: thinner
+								14,
+								1.4, // zoomed in: normal
+							],
 							lineDasharray: [2, 2],
 							lineOpacity: 0.7,
 						}}
 					/>
 					<MapboxGL.SymbolLayer
 						id='liftLineLabelLayer'
+						minZoomLevel={13.5}
 						style={{
 							symbolPlacement: "line",
 							textField: ["get", "name"],
-							textSize: 15,
+							textSize: 14,
 							textColor: "#000",
 							textHaloWidth: 3,
 							textHaloColor: "#fff",
@@ -220,6 +229,7 @@ export function SkiMap({
 					/>
 					<MapboxGL.SymbolLayer
 						id='liftLineArrowLayer'
+						minZoomLevel={15}
 						style={{
 							symbolPlacement: "line",
 							symbolSpacing: 200,
@@ -242,7 +252,7 @@ export function SkiMap({
 				<MapboxGL.ShapeSource id='liftStartPointsSource' shape={liftStartPoints} onPress={onMapFeaturePress}>
 					<MapboxGL.SymbolLayer
 						id='liftStartPointsLayer'
-						minZoomLevel={13}
+						minZoomLevel={15}
 						style={{
 							iconImage: [
 								"match",

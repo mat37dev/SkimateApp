@@ -370,7 +370,7 @@ export function calculateRouteForFeature(
 	}
 	// Build the graph:
 	// If allowedFilters is provided, always rebuild the graph
-	const graph = allowedFilters ? buildGraph(simplifiedEdges) : getGraph(simplifiedEdges);
+	const graph = !allowedFilters ? buildGraph(simplifiedEdges) : getGraph(simplifiedEdges);
 	if (!graph) {
 		console.error("Graph could not be built.");
 		return null;

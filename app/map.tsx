@@ -85,7 +85,6 @@ export default function MapScreen() {
 		if (showDestinationPoint && destinationCoord) {
 			console.log("showDestinationPoint : ", showDestinationPoint);
 			console.log("destinationCoord : ", destinationCoord);
-
 			console.log("destinationCoord →", destinationCoord);
 		}
 	}, [showDestinationPoint, destinationCoord]);
@@ -201,16 +200,25 @@ export default function MapScreen() {
 					id={lineId}
 					style={{
 						lineColor: color,
-						lineWidth: 1.5,
+						lineWidth: [
+							"interpolate",
+							["linear"],
+							["zoom"],
+							10,
+							0.8, // far out: thinner
+							14,
+							1.4, // zoomed in: normal
+						],
 						lineOpacity: 0.7,
 					}}
 				/>
 				<MapboxGL.SymbolLayer
 					id={labelId}
+					minZoomLevel={13.5}
 					style={{
 						symbolPlacement: "line",
 						textField: ["get", "name"],
-						textSize: 15,
+						textSize: 14,
 						textColor: color,
 						textHaloWidth: 3,
 						textHaloColor: "#fff",
@@ -223,10 +231,11 @@ export default function MapScreen() {
 				{hasArrow && (
 					<MapboxGL.SymbolLayer
 						id={arrowId}
+						minZoomLevel={15}
 						style={{
 							symbolPlacement: "line",
 							symbolSpacing: 200,
-							textField: "▶", // or "▶"
+							textField: "▶",
 							textSize: 30,
 							textColor: color,
 							textHaloWidth: 0,
@@ -314,7 +323,18 @@ export default function MapScreen() {
 			<SkiMap
 				cameraCenter={cameraCenter}
 				is3D={is3D}
-				onMapLoad={() => setMapReady(true)}
+				onMapLoad={() => {
+					setMapReady(true);
+					if (selectedStation) {
+						mapCameraRef.current?.setCamera({
+							centerCoordinate: [Number(selectedStation.longitude), Number(selectedStation.latitude)],
+							zoomLevel: 11,
+							pitch: is3D ? 70 : 0,
+							animationMode: "flyTo",
+							animationDuration: 1000,
+						});
+					}
+				}}
 				userLocation={userLocation}
 				mapCameraRef={mapCameraRef}
 				selectedFeature={selectedFeature}

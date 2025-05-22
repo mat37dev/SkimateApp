@@ -72,7 +72,7 @@ export function useUserLocation(options: GeoOptions = {}) {
 				Geolocation.clearWatch(watchId);
 			}
 		};
-	}, [options, fallback]);
+	}, [options]);
 
 	return { location, error };
 }
