@@ -120,8 +120,9 @@ export default function DashboardScreen() {
     };
 
     // Fonction quand on clique sur une station proposée
-    const handleSelectStation = async (stationId: string) => {
+    const handleSelectStation = async (stationId: string, domain: string) => {
         await AsyncStorage.setItem('selected_station', stationId);
+        await AsyncStorage.setItem('selected_domain', domain);
         setSelectedStation(stationId);
     };
 
@@ -164,7 +165,8 @@ export default function DashboardScreen() {
                                             key={station.osmId}
                                             logo={station.logo || null}
                                             text={station.name}
-                                            onPress={() => handleSelectStation(station.osmId)}
+                                            onPress={() => handleSelectStation(station.osmId, station.domain)}
+                                            domain={station.domain}
                                         />
                                     ))}
                                 </View>

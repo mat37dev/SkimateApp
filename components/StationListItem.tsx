@@ -7,6 +7,7 @@ type StationListItemProps = {
     logo?: ImageSourcePropType | null;  // source de l'image, par ex. require('../assets/images/stationLogo.png')
     text: string;
     onPress?: () => void;
+    domain: string
 };
 
 export function StationListItem({ logo, text, onPress }: StationListItemProps) {
