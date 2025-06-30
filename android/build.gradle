@@ -26,6 +26,7 @@ apply plugin: "com.facebook.react.rootproject"
 allprojects {
     repositories {
         maven {
+            maven { url 'https://api.mapbox.com/downloads/v2/releases/maven' }
             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
             url(new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../android'))
         }
