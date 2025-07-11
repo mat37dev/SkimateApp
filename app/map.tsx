@@ -1,6 +1,4 @@
 import MapboxGL from "@rnmapbox/maps";
-import { PermissionsAndroid, Platform } from "react-native";
-import Geolocation from "@react-native-community/geolocation";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { View, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -17,7 +15,11 @@ import { useStationData } from "@/hooks/useStationData";
 
 // Styles
 import styles from "@/styles/mapStyles";
-import { calculateRouteForFeature, getGraph, preprocessFeatures } from "@/hooks/calculateRoute";
+import {
+	calculateRouteForFeature,
+	getGraph,
+	preprocessFeatures,
+} from "@/hooks/calculateRoute";
 import { CollapsibleRouteSheet } from "@/components/Modals/CollapsibleRouteSheet";
 import { RoundedButton } from "@/components/btns/RoundedButton";
 import { SkiMap } from "@/components/SkiMap";
@@ -25,9 +27,14 @@ import { FontAwesome6, Ionicons } from "@expo/vector-icons";
 import { useSkiMap } from "@/hooks/useSkiMap";
 
 //Hooks
-import { centerOnStation, centerOnUser, resetToStation2D, setCameraToCoordinates } from "@/hooks/useCamera";
+import {
+	centerOnStation,
+	centerOnUser,
+	resetToStation2D,
+	setCameraToCoordinates,
+} from "@/hooks/useCamera";
 import { LoadingModal } from "@/components/Modals/LoadingModal";
-import { getLocation, useUserLocation } from "@/hooks/useUserLocation";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 export default function MapScreen() {
 	const backgroundColor = useThemeColor({}, "background");
@@ -40,12 +47,30 @@ export default function MapScreen() {
 	const [mapReady, setMapReady] = useState(false);
 
 	// Data fetching hooks
-	const { stations, dropdownItems, selectedStation, setSelectedStation, isLoading: stationsLoading } = useStations();
-	const { stationData, stationCoordinates, assets, isLoading: stationDataLoading } = useStationData(selectedStation);
+	const {
+		stations,
+		dropdownItems,
+		selectedStation,
+		setSelectedStation,
+		isLoading: stationsLoading,
+	} = useStations();
+	const {
+		stationCities,
+		stationCoordinates,
+		assets,
+		isLoading: stationDataLoading,
+	} = useStationData(selectedStation);
 	const loading = stationsLoading || stationDataLoading || !mapReady;
 
 	// Extract search/filter & graph logic from useSkiMap hook
-	const { searchQuery, setSearchQuery, searchResults, isSearching: hookIsSearching, handleSearch, combinedList } = useSkiMap(assets);
+	const {
+		searchQuery,
+		setSearchQuery,
+		searchResults,
+		isSearching: hookIsSearching,
+		handleSearch,
+		combinedList,
+	} = useSkiMap(assets);
 
 	// Local UI state
 	const [open, setOpen] = useState(false);
@@ -61,7 +86,9 @@ export default function MapScreen() {
 	const [showIntermediate, setShowIntermediate] = useState(true);
 	const [showExpert, setShowExpert] = useState(true);
 	const [showDestinationPoint, setShowDestinationPoint] = useState(false);
-	const [destinationCoord, setDestinationCoord] = useState<number[] | null>(null);
+	const [destinationCoord, setDestinationCoord] = useState<number[] | null>(
+		null
+	);
 
 	const [infoModalVisible, setInfoModalVisible] = useState(false);
 	const [selectedFeature, setSelectedFeature] = useState<any>(null);
@@ -79,7 +106,8 @@ export default function MapScreen() {
 		expert: true,
 	});
 
-	const stationGeoJson: { type: string; features: any[] } = stationCoordinates ?? { type: "FeatureCollection", features: [] };
+	const stationGeoJson: { type: string; features: any[] } =
+		stationCoordinates ?? { type: "FeatureCollection", features: [] };
 
 	useEffect(() => {
 		if (showDestinationPoint && destinationCoord) {
@@ -91,7 +119,10 @@ export default function MapScreen() {
 
 	// Set Mapbox token on mount
 	useEffect(() => {
-		MapboxGL.setAccessToken("pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A");
+		clearStorage();
+		MapboxGL.setAccessToken(
+			"pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A"
+		);
 	}, []);
 
 	//For testing purposes, the data are usually stored in the cache
@@ -110,7 +141,9 @@ export default function MapScreen() {
 	});
 
 	// Calculate camera center (default to station if available)
-	const cameraCenter = selectedStation ? [Number(selectedStation.longitude), Number(selectedStation?.latitude)] : [6.7483232, 45.5203648];
+	const cameraCenter = selectedStation
+		? [Number(selectedStation.longitude), Number(selectedStation?.latitude)]
+		: [6.7483232, 45.5203648];
 
 	// Handle dropdown changes (Station Select)
 	const handleStationChange = (osmId: string) => {
@@ -131,11 +164,14 @@ export default function MapScreen() {
 		console.log("tapped feature.id:", feature.id);
 		setSearchModalVisible(false);
 
-		const selected = combinedList.find((item) => item.id === feature.id) || feature;
+		const selected =
+			combinedList.find((item) => item.id === feature.id) || feature;
 
 		const targetCoord =
 			selected.geometry.type === "LineString"
-				? selected.geometry.coordinates[Math.floor(selected.geometry.coordinates.length / 2)]
+				? selected.geometry.coordinates[
+						Math.floor(selected.geometry.coordinates.length / 2)
+				  ]
 				: selected.geometry.coordinates;
 
 		console.log("target coord:", targetCoord);
@@ -156,12 +192,24 @@ export default function MapScreen() {
 	};
 
 	// Build the graph from combinedList (hook already preprocessed this)
-	const simplifiedEdges = useMemo(() => preprocessFeatures(combinedList), [combinedList]);
-	const memoizedGraph = useMemo(() => (simplifiedEdges.length > 0 ? getGraph(simplifiedEdges) : null), [simplifiedEdges]);
+	const simplifiedEdges = useMemo(
+		() => preprocessFeatures(combinedList),
+		[combinedList]
+	);
+	const memoizedGraph = useMemo(
+		() => (simplifiedEdges.length > 0 ? getGraph(simplifiedEdges) : null),
+		[simplifiedEdges]
+	);
 
 	function onCalculateRoute(direction: "top" | "bottom") {
 		if (!selectedFeature) return;
-		const result = calculateRouteForFeature(selectedFeature, direction, userLocation, combinedList, travelFilters);
+		const result = calculateRouteForFeature(
+			selectedFeature,
+			direction,
+			userLocation,
+			combinedList,
+			travelFilters
+		);
 		if (!result) {
 			console.error("Route calculation failed.");
 			return;
@@ -185,17 +233,36 @@ export default function MapScreen() {
 		setSheetOpen(false);
 		setGpsMode(false);
 		// Reset camera: center on station, zoom out, and remove tilt
-		resetToStation2D(mapCameraRef, Number(selectedStation?.longitude), Number(selectedStation?.latitude));
+		resetToStation2D(
+			mapCameraRef,
+			Number(selectedStation?.longitude),
+			Number(selectedStation?.latitude)
+		);
 
 		setShowDestinationPoint(false);
 		setDestinationCoord(null);
 	}
 
 	// Define runLayers to pass to SkiMap
-	const runLayers = (shapeId: string, lineId: string, color: string, labelId: string, arrowId: string, shapeData: any) => {
-		const hasArrow = shapeData.features.every((feature: any) => !["unknown", "flat"].includes(feature.properties.orientation));
+	const runLayers = (
+		shapeId: string,
+		lineId: string,
+		color: string,
+		labelId: string,
+		arrowId: string,
+		shapeData: any
+	) => {
+		const hasArrow = shapeData.features.some(
+			(f) =>
+				f.properties.orientation &&
+				!["unknown", "flat"].includes(f.properties.orientation)
+		);
 		return (
-			<MapboxGL.ShapeSource id={shapeId} shape={shapeData} onPress={handleMapFeaturePress}>
+			<MapboxGL.ShapeSource
+				id={shapeId}
+				shape={shapeData}
+				onPress={handleMapFeaturePress}
+			>
 				<MapboxGL.LineLayer
 					id={lineId}
 					style={{
@@ -261,7 +328,10 @@ export default function MapScreen() {
 					items={dropdownItems}
 					setOpen={setOpen}
 					setValue={(callback) => {
-						const osmId = typeof callback === "function" ? callback(selectedStation?.osmId) : callback;
+						const osmId =
+							typeof callback === "function"
+								? callback(selectedStation?.osmId)
+								: callback;
 						handleStationChange(osmId);
 					}}
 					setItems={() => {}}
@@ -315,8 +385,13 @@ export default function MapScreen() {
 			/>
 			{/* Search Bar */}
 			<View style={styles.searchBarContainer}>
-				<TouchableOpacity style={styles.searchBar} onPress={() => setSearchModalVisible(true)}>
-					<Text style={styles.searchBarText}>Arpette, La Roche, etc.</Text>
+				<TouchableOpacity
+					style={styles.searchBar}
+					onPress={() => setSearchModalVisible(true)}
+				>
+					<Text style={styles.searchBarText}>
+						Arpette, La Roche, etc.
+					</Text>
 				</TouchableOpacity>
 			</View>
 			{/* SkiMap Component with filter props */}
@@ -327,7 +402,10 @@ export default function MapScreen() {
 					setMapReady(true);
 					if (selectedStation) {
 						mapCameraRef.current?.setCamera({
-							centerCoordinate: [Number(selectedStation.longitude), Number(selectedStation.latitude)],
+							centerCoordinate: [
+								Number(selectedStation.longitude),
+								Number(selectedStation.latitude),
+							],
 							zoomLevel: 11,
 							pitch: is3D ? 70 : 0,
 							animationMode: "flyTo",
@@ -349,6 +427,7 @@ export default function MapScreen() {
 				showLifts={showLifts}
 				showNovice={showNovice}
 				showEasy={showEasy}
+				stationCities={stationCities}
 				showIntermediate={showIntermediate}
 				showExpert={showExpert}
 				gpsMode={gpsMode} // pass the new prop
@@ -356,9 +435,19 @@ export default function MapScreen() {
 			{/* Rounded Buttons */}
 			<View style={styles.centerCameraBtnContainer}>
 				<RoundedButton
-					onPress={() => centerOnStation(mapCameraRef, Number(selectedStation?.longitude), Number(selectedStation?.latitude))}
+					onPress={() =>
+						centerOnStation(
+							mapCameraRef,
+							Number(selectedStation?.longitude),
+							Number(selectedStation?.latitude)
+						)
+					}
 				>
-					<FontAwesome6 name='arrows-to-circle' size={24} color='black' />
+					<FontAwesome6
+						name='arrows-to-circle'
+						size={24}
+						color='black'
+					/>
 				</RoundedButton>
 			</View>
 
@@ -366,7 +455,10 @@ export default function MapScreen() {
 				<RoundedButton
 					disabled={!userLocation}
 					onPress={() => {
-						console.log("centering on user location : ", userLocation);
+						console.log(
+							"centering on user location : ",
+							userLocation
+						);
 						if (!userLocation) return;
 						mapCameraRef.current?.setCamera({
 							centerCoordinate: userLocation,
@@ -375,12 +467,18 @@ export default function MapScreen() {
 						});
 					}}
 				>
-					<Ionicons name='locate' size={24} color={userLocation ? "black" : "gray"} />
+					<Ionicons
+						name='locate'
+						size={24}
+						color={userLocation ? "black" : "gray"}
+					/>
 				</RoundedButton>
 			</View>
 			<View style={styles.mapStyleBtnContainer}>
 				<RoundedButton onPress={toggleMapStyle}>
-					<Text style={styles.mapStyleBtnText}>{is3D ? "3D" : "2D"}</Text>
+					<Text style={styles.mapStyleBtnText}>
+						{is3D ? "3D" : "2D"}
+					</Text>
 				</RoundedButton>
 			</View>
 			<View style={styles.filterBtnContainer}>

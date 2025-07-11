@@ -31,14 +31,6 @@ const apiClient = async (endpoint: string, options: RequestInit = {}) => {
 		headers["Authorization"] = `Bearer ${token}`;
 	}
 
-	// Log the request
-	console.log("📤 Full API Request URL:", url);
-	console.log("📤 API Method:", options.method || "GET");
-	console.log("📤 Headers:", headers);
-	if (options.body) {
-		console.log("📤 Data:", options.body);
-	}
-
 	try {
 		const response = await fetch(url, {
 			...options,
@@ -53,7 +45,6 @@ const apiClient = async (endpoint: string, options: RequestInit = {}) => {
 		}
 
 		const data = await response.json();
-		console.log("✅ API Response:", response.status, data);
 		return data;
 	} catch (error) {
 		console.error("❌ Network Error:", error);

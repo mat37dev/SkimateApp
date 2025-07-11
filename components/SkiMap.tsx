@@ -15,6 +15,7 @@ export function SkiMap({
 	destinationCoord,
 	showDestinationPoint,
 	assets,
+	stationCities,
 	onMapFeaturePress,
 	onMapLoad,
 	runLayers,
@@ -29,17 +30,40 @@ export function SkiMap({
 	// Assets destructuring...
 	const { runs, lifts } = assets || {};
 	const runsEasy = runs?.easy || { type: "FeatureCollection", features: [] };
-	const runsNovice = runs?.novice || { type: "FeatureCollection", features: [] };
-	const runsIntermediate = runs?.intermediate || { type: "FeatureCollection", features: [] };
-	const runsExpert = runs?.expert || { type: "FeatureCollection", features: [] };
-	const runsNull = runs?.nullDiff || { type: "FeatureCollection", features: [] };
-	const runsUnknown = runs?.unknown || { type: "FeatureCollection", features: [] };
+	const runsNovice = runs?.novice || {
+		type: "FeatureCollection",
+		features: [],
+	};
+	const runsIntermediate = runs?.intermediate || {
+		type: "FeatureCollection",
+		features: [],
+	};
+	const runsExpert = runs?.expert || {
+		type: "FeatureCollection",
+		features: [],
+	};
+	const runsNull = runs?.nullDiff || {
+		type: "FeatureCollection",
+		features: [],
+	};
+	const runsUnknown = runs?.unknown || {
+		type: "FeatureCollection",
+		features: [],
+	};
 
-	const liftLines = lifts?.liftLines || { type: "FeatureCollection", features: [] };
-	const liftStartPoints = lifts?.liftStartPoints || { type: "FeatureCollection", features: [] };
+	const liftLines = lifts?.liftLines || {
+		type: "FeatureCollection",
+		features: [],
+	};
+	const liftStartPoints = lifts?.liftStartPoints || {
+		type: "FeatureCollection",
+		features: [],
+	};
 
 	// State to track dynamic user location and current index in the route.
-	const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(userLocation);
+	const [currentLocation, setCurrentLocation] = useState<
+		[number, number] | null
+	>(userLocation);
 	const [currentIndex, setCurrentIndex] = useState(0);
 
 	const hasLoadedRef = useRef(false);
@@ -49,7 +73,6 @@ export function SkiMap({
 			onMapLoad?.();
 		}
 	};
-	useEffect(() => {}, [userLocation]);
 
 	//values for bounding camera in a square
 	const BOUNDS = {
@@ -59,16 +82,34 @@ export function SkiMap({
 		sw: [6.6, 45.4],
 		padding: { top: 20, bottom: 20, left: 20, right: 20 },
 	};
-
 	return (
 		<MapboxGL.MapView
+			key={1}
 			style={styles.map}
 			styleURL='mapbox://styles/baptlab/cm7kbr8wz008y01sb2hxsc5g9'
-			onRegionDidChange={({ geometry: { coordinates } }) => {
-				const [lng, lat] = coordinates;
-				// si on est hors zone, on recentre sur la station
-				if (lng < BOUNDS.sw[0] || lng > BOUNDS.ne[0] || lat < BOUNDS.sw[1] || lat > BOUNDS.ne[1]) {
-					mapCameraRef.current?.flyTo(cameraCenter, 1000);
+			onMapIdle={(event) => {
+				const coords = event?.geometry?.coordinates;
+				if (!coords) return;
+
+				const [lng, lat] = coords;
+
+				if (
+					lng < BOUNDS.sw[0] ||
+					lng > BOUNDS.ne[0] ||
+					lat < BOUNDS.sw[1] ||
+					lat > BOUNDS.ne[1]
+				) {
+					mapCameraRef.current?.setCamera({
+						centerCoordinate: cameraCenter,
+						zoomLevel: 11,
+						pitch: is3D ? 70 : 0,
+						animationMode: "flyTo",
+						duration: 1000,
+					});
+					console.log(
+						"Out of bounds, recentering on cameraCenter:",
+						cameraCenter
+					);
 				}
 			}}
 			onDidFinishLoadingMap={() => {
@@ -107,7 +148,13 @@ export function SkiMap({
 
 			{/* Highlight selected feature */}
 			{selectedFeature && (
-				<MapboxGL.ShapeSource id='highlightSource' shape={{ type: "FeatureCollection", features: [selectedFeature] }}>
+				<MapboxGL.ShapeSource
+					id='highlightSource'
+					shape={{
+						type: "FeatureCollection",
+						features: [selectedFeature],
+					}}
+				>
 					<MapboxGL.LineLayer
 						id='highlightLayer'
 						style={{
@@ -149,7 +196,11 @@ export function SkiMap({
 			{/* If routeFeature is an array (segmented route), you might also render each feature */}
 			{Array.isArray(routeFeature) &&
 				routeFeature.map((feature: any, index: number) => (
-					<MapboxGL.ShapeSource key={`routeSource-${index}`} id={`routeSource-${index}`} shape={feature}>
+					<MapboxGL.ShapeSource
+						key={`routeSource-${index}`}
+						id={`routeSource-${index}`}
+						shape={feature}
+					>
 						<MapboxGL.LineLayer
 							id={`normalLayer-${index}`}
 							style={{
@@ -190,10 +241,35 @@ export function SkiMap({
 					/>
 				</MapboxGL.ShapeSource>
 			)}
-
+			{stationCities && stationCities.features.length > 0 && (
+				<MapboxGL.ShapeSource
+					id='citySource'
+					shape={stationCities}
+					key={`citySource-${stationCities.features.length}`}
+				>
+					<MapboxGL.SymbolLayer
+						minZoomLevel={11.5}
+						maxZoomLevel={13.5}
+						id='cityLabelLayer'
+						style={{
+							textField: ["get", "name"],
+							textSize: 14,
+							textColor: "#000",
+							textHaloWidth: 1,
+							textHaloColor: "#fff",
+							textAllowOverlap: false,
+							textIgnorePlacement: false,
+						}}
+					/>
+				</MapboxGL.ShapeSource>
+			)}
 			{/* Lift lines (shown only if showLifts is true) */}
 			{showLifts && liftLines.features.length > 0 && (
-				<MapboxGL.ShapeSource id='liftLineSource' shape={liftLines} onPress={onMapFeaturePress}>
+				<MapboxGL.ShapeSource
+					id='liftLineSource'
+					shape={liftLines}
+					onPress={onMapFeaturePress}
+				>
 					<MapboxGL.LineLayer
 						id='liftLineLayer'
 						style={{
@@ -249,7 +325,11 @@ export function SkiMap({
 
 			{/* Lift start points (shown only if showLifts is true) */}
 			{showLifts && liftStartPoints.features.length > 0 && (
-				<MapboxGL.ShapeSource id='liftStartPointsSource' shape={liftStartPoints} onPress={onMapFeaturePress}>
+				<MapboxGL.ShapeSource
+					id='liftStartPointsSource'
+					shape={liftStartPoints}
+					onPress={onMapFeaturePress}
+				>
 					<MapboxGL.SymbolLayer
 						id='liftStartPointsLayer'
 						minZoomLevel={15}
@@ -289,9 +369,24 @@ export function SkiMap({
 			{/* Runs by difficulty using runLayers (shown only if showRuns is true) */}
 			{showRuns && (
 				<>
-					{showEasy && runLayers("runEasySource", "runEasyLayer", "blue", "runEasyLabelLayer", "runEasyArrowLayer", runsEasy)}
+					{showEasy &&
+						runLayers(
+							"runEasySource",
+							"runEasyLayer",
+							"blue",
+							"runEasyLabelLayer",
+							"runEasyArrowLayer",
+							runsEasy
+						)}
 					{showNovice &&
-						runLayers("runNoviceSource", "runNoviceLayer", "green", "runNoviceLabelLayer", "runNoviceArrowLayer", runsNovice)}
+						runLayers(
+							"runNoviceSource",
+							"runNoviceLayer",
+							"green",
+							"runNoviceLabelLayer",
+							"runNoviceArrowLayer",
+							runsNovice
+						)}
 					{showIntermediate &&
 						runLayers(
 							"runIntermediateSource",
@@ -302,15 +397,39 @@ export function SkiMap({
 							runsIntermediate
 						)}
 					{showExpert &&
-						runLayers("runExpertSource", "runExpertLayer", "black", "runExpertLabelLayer", "runExpertArrowLayer", runsExpert)}
-					{runLayers("runNullSource", "runNullLayer", "grey", "runNullLabelLayer", "runNullArrowLayer", runsNull)}
-					{runLayers("runUnknownSource", "runUnknownLayer", "grey", "runUnknownLabelLayer", "runUnknownArrowLayer", runsUnknown)}
+						runLayers(
+							"runExpertSource",
+							"runExpertLayer",
+							"black",
+							"runExpertLabelLayer",
+							"runExpertArrowLayer",
+							runsExpert
+						)}
+					{runLayers(
+						"runNullSource",
+						"runNullLayer",
+						"grey",
+						"runNullLabelLayer",
+						"runNullArrowLayer",
+						runsNull
+					)}
+					{runLayers(
+						"runUnknownSource",
+						"runUnknownLayer",
+						"grey",
+						"runUnknownLabelLayer",
+						"runUnknownArrowLayer",
+						runsUnknown
+					)}
 				</>
 			)}
 
 			{/* Destination route point flag icon*/}
 			{showDestinationPoint && destinationCoord && (
-				<MapboxGL.PointAnnotation id='destinationPoint' coordinate={destinationCoord}>
+				<MapboxGL.PointAnnotation
+					id='destinationPoint'
+					coordinate={destinationCoord}
+				>
 					<View style={styles.destinationIcon}>
 						<Text style={{ fontSize: 24 }}>🚩</Text>
 					</View>
@@ -329,19 +448,22 @@ export function SkiMap({
 				/>
 			) : is3D ? (
 				// 3D overview mode
-				<MapboxGL.Camera ref={mapCameraRef} zoomLevel={11} centerCoordinate={cameraCenter} pitch={70} />
+				<MapboxGL.Camera
+					ref={mapCameraRef}
+					zoomLevel={11}
+					centerCoordinate={cameraCenter}
+					pitch={70}
+				/>
 			) : (
 				// Plain 2D mode
-				<MapboxGL.Camera ref={mapCameraRef} zoomLevel={11} centerCoordinate={cameraCenter} pitch={0} />
+				<MapboxGL.Camera
+					ref={mapCameraRef}
+					zoomLevel={11}
+					centerCoordinate={cameraCenter}
+					pitch={0}
+				/>
 			)}
 			<MapboxGL.UserLocation
-				onUpdate={(location) => {
-					console.log("[MapboxGL.UserLocation] onUpdate:", {
-						lon: location.coords.longitude,
-						lat: location.coords.latitude,
-						accuracy: location.coords.accuracy,
-					});
-				}}
 				visible
 				showsUserHeadingIndicator={gpsMode}
 				androidRenderMode={gpsMode ? "compass" : "normal"}

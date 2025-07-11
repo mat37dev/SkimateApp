@@ -6,8 +6,12 @@ import { Station, UseStationsResult } from "@/interfaces/datas/StationData";
 
 export const useStations = (): UseStationsResult => {
 	const [stations, setStations] = useState<Station[]>([]);
-	const [dropdownItems, setDropdownItems] = useState<{ label: string; value: string }[]>([]);
-	const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+	const [dropdownItems, setDropdownItems] = useState<
+		{ label: string; value: string }[]
+	>([]);
+	const [selectedStation, setSelectedStation] = useState<Station | null>(
+		null
+	);
 	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
@@ -20,11 +24,18 @@ export const useStations = (): UseStationsResult => {
 			isFetching.current = true;
 
 			try {
-				const cachedStations = await AsyncStorage.getItem("skiStations");
+				const cachedStations = await AsyncStorage.getItem(
+					"skiStations"
+				);
 				if (cachedStations) {
 					const stationsData: Station[] = JSON.parse(cachedStations);
 					setStations(stationsData);
-					setDropdownItems(stationsData.map((s) => ({ label: s.name, value: s.osmId })));
+					setDropdownItems(
+						stationsData.map((s) => ({
+							label: s.name,
+							value: s.osmId,
+						}))
+					);
 					// Set the first station as selected
 					if (stationsData.length > 0) {
 						setSelectedStation(stationsData[0]);
@@ -42,20 +53,36 @@ export const useStations = (): UseStationsResult => {
 				if (response && response.length > 0) {
 					// Optionally, you could enhance each station with additional data:
 					const stationsWithCoords: Station[] = await Promise.all(
-						response.map(async (station: Station, index: number) => {
-							// Fetch additional station data (like coordinates)
-							const stationData = await fetchStationsData(station);
-							return {
-								...station,
-								longitude: stationData?.longitude || (index === 0 ? 6.681 : 6.82),
-								latitude: stationData?.latitude || (index === 0 ? 45.512 : 45.563),
-							};
-						})
+						response.map(
+							async (station: Station, index: number) => {
+								// Fetch additional station data (like coordinates)
+								const stationData = await fetchStationsData(
+									station
+								);
+								return {
+									...station,
+									longitude:
+										stationData?.longitude ||
+										(index === 0 ? 6.681 : 6.82),
+									latitude:
+										stationData?.latitude ||
+										(index === 0 ? 45.512 : 45.563),
+								};
+							}
+						)
 					);
 
-					await AsyncStorage.setItem("skiStations", JSON.stringify(stationsWithCoords));
+					await AsyncStorage.setItem(
+						"skiStations",
+						JSON.stringify(stationsWithCoords)
+					);
 					setStations(stationsWithCoords);
-					setDropdownItems(stationsWithCoords.map((s) => ({ label: s.name, value: s.osmId })));
+					setDropdownItems(
+						stationsWithCoords.map((s) => ({
+							label: s.name,
+							value: s.osmId,
+						}))
+					);
 					if (stationsWithCoords.length > 0) {
 						setSelectedStation(stationsWithCoords[0]);
 					}
@@ -73,5 +100,11 @@ export const useStations = (): UseStationsResult => {
 		getStations();
 	}, []);
 
-	return { stations, dropdownItems, selectedStation, setSelectedStation, isLoading };
+	return {
+		stations,
+		dropdownItems,
+		selectedStation,
+		setSelectedStation,
+		isLoading,
+	};
 };

@@ -1,3 +1,5 @@
+import { FeatureCollection, Point } from "geojson";
+
 export interface SkiMapProps {
 	cameraCenter: [number, number];
 	is3D: boolean;
@@ -9,7 +11,14 @@ export interface SkiMapProps {
 	stationGeoJson: any;
 	assets: any;
 	onMapFeaturePress: (e: any) => void;
-	runLayers: (shapeId: string, lineId: string, color: string, labelId: string, arrowId: string, shapeData: any) => JSX.Element;
+	runLayers: (
+		shapeId: string,
+		lineId: string,
+		color: string,
+		labelId: string,
+		arrowId: string,
+		shapeData: any
+	) => JSX.Element;
 	showRuns: boolean;
 	showLifts: boolean;
 	showNovice: boolean;
@@ -17,6 +26,7 @@ export interface SkiMapProps {
 	showIntermediate: boolean;
 	showExpert: boolean;
 	destinationCoord: [number, number] | null;
+	stationCities?: FeatureCollection<Point, { name: string }>;
 	showDestinationPoint: boolean;
 	gpsMode?: boolean; // new optional prop
 }

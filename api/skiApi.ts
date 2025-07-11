@@ -1,6 +1,6 @@
 import apiClient from "@/api/apiClient";
 
-// Fetch all stations
+// Fetch all stations (+ osmId)
 export const fetchStations = async () => {
 	try {
 		const response = await apiClient("/api/stations", {
@@ -59,7 +59,9 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 
 		// ✅ Extract the main station
 		const stationFeature = response.features.find(
-			(feature) => feature.properties.type === "station" && feature.properties.osmId === stationOsmId
+			(feature) =>
+				feature.properties.type === "station" &&
+				feature.properties.osmId === stationOsmId
 		);
 
 		// ✅ Extract station delimitations (features representing station boundaries)
@@ -80,7 +82,50 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 				},
 			}));
 
-		console.log(`📌 Found ${stationsDelimitations.length} delimitations for station ${stationFeature?.properties?.name || "Unknown"}`);
+		console.log(
+			`📌 Found ${
+				stationsDelimitations.length
+			} delimitations for station ${
+				stationFeature?.properties?.name || "Unknown"
+			}`
+		);
+
+		const stationFeatures = response.features.filter(
+			(f) => f.properties.type === "station"
+		);
+
+		const allCities = [];
+		for (const station of stationFeatures) {
+			const cityData = station.properties?.city;
+			if (
+				cityData &&
+				(Array.isArray(cityData) || typeof cityData === "object")
+			) {
+				const citiesArr = Array.isArray(cityData)
+					? cityData
+					: Object.values(cityData);
+				allCities.push(...citiesArr);
+			}
+		}
+
+		const citiesGeoJson = {
+			type: "FeatureCollection",
+			features: allCities.map((c, idx) => ({
+				type: "Feature",
+				id: c.id || idx,
+				properties: { name: c.name },
+				geometry: {
+					type: "Point",
+					coordinates: [c.lon, c.lat],
+				},
+			})),
+		};
+
+		console.log("Extracted all cities count:", allCities.length);
+		console.log(
+			"Extracted all citie:",
+			allCities.map((c) => c.name)
+		);
 
 		// ✅ Extract runs (excluding closed loops)
 		const runFeatures = response.features.filter(
@@ -89,15 +134,25 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 				f.geometry.type === "LineString" &&
 				f.geometry.coordinates.length >= 2 &&
 				!(
-					f.geometry.coordinates[0][0] === f.geometry.coordinates.at(-1)[0] &&
-					f.geometry.coordinates[0][1] === f.geometry.coordinates.at(-1)[1]
+					f.geometry.coordinates[0][0] ===
+						f.geometry.coordinates.at(-1)[0] &&
+					f.geometry.coordinates[0][1] ===
+						f.geometry.coordinates.at(-1)[1]
 				)
 		);
 
 		// ✅ Extract lifts (separating lines & pylons)
-		const liftFeatures = response.features.filter((f) => f.properties.category === "lift");
-		const liftLineFeatures = liftFeatures.filter((f) => f.geometry.type === "LineString");
-		const pylonPoints = liftFeatures.filter((f) => f.geometry.type === "Point" && f.properties.tags?.aerialway === "pylon");
+		const liftFeatures = response.features.filter(
+			(f) => f.properties.category === "lift"
+		);
+		const liftLineFeatures = liftFeatures.filter(
+			(f) => f.geometry.type === "LineString"
+		);
+		const pylonPoints = liftFeatures.filter(
+			(f) =>
+				f.geometry.type === "Point" &&
+				f.properties.tags?.aerialway === "pylon"
+		);
 
 		// ✅ Lift start points extraction
 		const liftStartArr = liftLineFeatures
@@ -108,7 +163,13 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 							type: "Feature",
 							geometry: {
 								type: "Point",
-								coordinates: coords[lineFeat.properties.orientation === "desc" ? coords.length - 1 : 0],
+								coordinates:
+									coords[
+										lineFeat.properties.orientation ===
+										"desc"
+											? coords.length - 1
+											: 0
+									],
 							},
 							properties: { ...lineFeat.properties },
 					  }
@@ -119,16 +180,33 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 		// ✅ Process runs and lifts for correct orientation
 		const processedRuns = runFeatures.map((f) => ({
 			...f,
-			geometry: { ...f.geometry, coordinates: processCoordinates(f.geometry.coordinates, f.properties.orientation, "run") },
+			geometry: {
+				...f.geometry,
+				coordinates: processCoordinates(
+					f.geometry.coordinates,
+					f.properties.orientation,
+					"run"
+				),
+			},
 		}));
 
 		const processedLifts = liftLineFeatures.map((f) => ({
 			...f,
-			geometry: { ...f.geometry, coordinates: processCoordinates(f.geometry.coordinates, f.properties.orientation, "lift") },
+			geometry: {
+				...f.geometry,
+				coordinates: processCoordinates(
+					f.geometry.coordinates,
+					f.properties.orientation,
+					"lift"
+				),
+			},
 		}));
 
 		// ✅ Organize by difficulty
-		const getRunsByDifficulty = (difficulty) => processedRuns.filter((f) => f.properties?.difficulty === difficulty) || [];
+		const getRunsByDifficulty = (difficulty) =>
+			processedRuns.filter(
+				(f) => f.properties?.difficulty === difficulty
+			) || [];
 
 		return {
 			stationGeoJson: {
@@ -139,29 +217,65 @@ export const fetchStationCoordinates = async (domain, stationOsmId) => {
 				type: "FeatureCollection",
 				features: stationsDelimitations,
 			},
+			allCities: {
+				type: "FeatureCollection",
+				features: citiesGeoJson.features,
+			},
 			runs: {
-				novice: { type: "FeatureCollection", features: getRunsByDifficulty("novice") },
-				easy: { type: "FeatureCollection", features: getRunsByDifficulty("easy") },
-				intermediate: { type: "FeatureCollection", features: getRunsByDifficulty("intermediate") },
+				novice: {
+					type: "FeatureCollection",
+					features: getRunsByDifficulty("novice"),
+				},
+				easy: {
+					type: "FeatureCollection",
+					features: getRunsByDifficulty("easy"),
+				},
+				intermediate: {
+					type: "FeatureCollection",
+					features: getRunsByDifficulty("intermediate"),
+				},
 				expert: {
 					type: "FeatureCollection",
-					features: processedRuns.filter((f) => ["advanced", "expert", "freeride", "extreme"].includes(f.properties?.difficulty)),
+					features: processedRuns.filter((f) =>
+						["advanced", "expert", "freeride", "extreme"].includes(
+							f.properties?.difficulty
+						)
+					),
 				},
-				nullDiff: { type: "FeatureCollection", features: getRunsByDifficulty(null) },
+				nullDiff: {
+					type: "FeatureCollection",
+					features: getRunsByDifficulty(null),
+				},
 				unknown: {
 					type: "FeatureCollection",
 					features: processedRuns.filter(
 						(f) =>
-							!["novice", "easy", "intermediate", "advanced", "expert", "freeride", "extreme", null].includes(
-								f.properties?.difficulty
-							)
+							![
+								"novice",
+								"easy",
+								"intermediate",
+								"advanced",
+								"expert",
+								"freeride",
+								"extreme",
+								null,
+							].includes(f.properties?.difficulty)
 					),
 				},
 			},
 			lifts: {
-				liftLines: { type: "FeatureCollection", features: processedLifts },
-				liftPylonPoints: { type: "FeatureCollection", features: pylonPoints },
-				liftStartPoints: { type: "FeatureCollection", features: liftStartArr },
+				liftLines: {
+					type: "FeatureCollection",
+					features: processedLifts,
+				},
+				liftPylonPoints: {
+					type: "FeatureCollection",
+					features: pylonPoints,
+				},
+				liftStartPoints: {
+					type: "FeatureCollection",
+					features: liftStartArr,
+				},
 			},
 		};
 	} catch (error) {

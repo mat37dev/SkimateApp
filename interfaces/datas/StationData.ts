@@ -1,17 +1,52 @@
+export interface CityFeature {
+	id: string | number;
+	name: string;
+	lon: number;
+	lat: number;
+}
+
 export interface StationData {
-	// Define properties returned by fetchStationsData
 	domain: string;
-	// ...other properties
+	osmId: string;
+	name: string;
+	website?: string;
+	emergencyPhone?: string;
+	altitudeMin?: string;
+	altitudeMax?: string;
+	latitude: number;
+	longitude: number;
+	distanceSlope?: string;
+	countEasy?: string;
+	countIntermediate?: string;
+	countAdvanced?: string;
+	countExpert?: string;
+	logo?: string;
+	city?: Record<string, CityFeature>;
 }
 
 export interface StationCoordinates {
-	type: string;
+	type: "FeatureCollection";
 	features: any[];
 }
 
 export interface StationAssets {
-	runs: any; // Can be further typed into a structure grouping difficulties
-	lifts: any;
+	runs: {
+		easy: FeatureCollectionWithIds;
+		novice: FeatureCollectionWithIds;
+		intermediate: FeatureCollectionWithIds;
+		expert: FeatureCollectionWithIds;
+		nullDiff: FeatureCollectionWithIds;
+		unknown: FeatureCollectionWithIds;
+	};
+	lifts: {
+		liftLines: FeatureCollectionWithIds;
+		liftStartPoints: FeatureCollectionWithIds;
+	};
+}
+
+export interface FeatureCollectionWithIds {
+	type: "FeatureCollection";
+	features: (any & { id: number })[];
 }
 
 export interface UseStationDataResult {
@@ -26,7 +61,6 @@ export interface Station {
 	name: string;
 	longitude: number;
 	latitude: number;
-	// add other station properties as needed
 }
 
 export interface UseStationsResult {

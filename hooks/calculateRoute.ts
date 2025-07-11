@@ -1,44 +1,119 @@
-// Module-level variable for caching the graph.
 let cachedGraph: Graph | null = null;
 
-const MAX_BRIDGE_DISTANCE = 0.003; // ~50m
+const MAX_BRIDGE_DISTANCE = 0.004; // Maximum distance (in degrees) to consider two nodes as "close enough" for bridging.
+const BRIDGING_PENALTY = 50500; // Fait varier la tendance à créer des ponts entre les pistes (à augmenter pour diminuer les ponts).
 
 /**
  * Preprocess features so that each feature yields exactly one "edge"
  * from a valid start to a valid end.
  */
+// … en haut de ton fichier, juste après les imports et les constantes :
+
+/**
+ * Compare deux points [lng, lat] en tolérant un tout petit écart.
+ */
+function areSamePoint(a: [number, number], b: [number, number], eps = 1e-8) {
+	return Math.abs(a[0] - b[0]) < eps && Math.abs(a[1] - b[1]) < eps;
+}
+
 export function preprocessFeatures(features: any[]) {
 	const simplifiedEdges: any[] = [];
+	const runLines: Array<{ coords: [number, number][]; properties: any }> = [];
+	const liftEdges: any[] = [];
+
+	// 1) Sépare runs et lifts
 	features.forEach((feature) => {
-		if (feature.geometry.type === "LineString") {
-			const coords = feature.geometry.coordinates;
-			if (!coords || coords.length < 2) return;
-			const category = feature.category || feature.properties?.category;
-			if (category === "run") {
-				// For runs, first coordinate is the top (start), last is the bottom (end).
-				const startCoord = coords[0];
-				const endCoord = coords[coords.length - 1];
-				simplifiedEdges.push({
-					startCoord,
-					endCoord,
-					category: "run",
-					properties: feature.properties,
-					fullCoordinates: coords, // full geometry for outlining
+		if (feature.geometry.type !== "LineString") return;
+		const coords = feature.geometry.coordinates as [number, number][];
+		if (coords.length < 2) return;
+		const category = feature.category || feature.properties?.category;
+		if (category === "run") {
+			runLines.push({ coords, properties: feature.properties });
+		} else if (category === "lift") {
+			// logique d'origine pour les lifts
+			liftEdges.push({
+				startCoord: coords[0],
+				endCoord: coords[coords.length - 1],
+				category: "lift",
+				properties: feature.properties,
+				fullCoordinates: coords,
+			});
+		}
+	});
+
+	// 2) Trouve les intersections *exactes* entre toutes les runs
+	const intersectionPoints: [number, number][] = [];
+	for (let i = 0; i < runLines.length; i++) {
+		for (let j = i + 1; j < runLines.length; j++) {
+			const A = runLines[i].coords;
+			const B = runLines[j].coords;
+			A.forEach((ptA) => {
+				B.forEach((ptB) => {
+					if (areSamePoint(ptA, ptB)) {
+						intersectionPoints.push(ptA);
+					}
 				});
-			} else if (category === "lift") {
-				// For lifts, first coordinate is the bottom (start), last is the top (end).
-				const startCoord = coords[0];
-				const endCoord = coords[coords.length - 1];
+			});
+		}
+	}
+	console.log(`✅ Found ${intersectionPoints.length} exact intersections`);
+
+	// 3) Pour chaque run, scinde-la au niveau des intersections
+	runLines.forEach(({ coords, properties }) => {
+		// on récupère tous les indices où il y a une intersection
+		const cutIndices = new Set<number>();
+		coords.forEach((pt, idx) => {
+			if (
+				intersectionPoints.find((ip) => areSamePoint(ip, pt)) &&
+				idx > 0 &&
+				idx < coords.length - 1
+			) {
+				cutIndices.add(idx);
+			}
+		});
+
+		// si pas d'intersection, edge entier
+		if (cutIndices.size === 0) {
+			simplifiedEdges.push({
+				startCoord: coords[0],
+				endCoord: coords[coords.length - 1],
+				category: "run",
+				properties,
+				fullCoordinates: coords,
+			});
+		} else {
+			// sinon on découpe en segments successifs
+			let lastCut = 0;
+			const sortedCuts = Array.from(cutIndices).sort((a, b) => a - b);
+			sortedCuts.forEach((cutIdx) => {
+				// segment [lastCut .. cutIdx]
+				const seg = coords.slice(lastCut, cutIdx + 1);
 				simplifiedEdges.push({
-					startCoord,
-					endCoord,
-					category: "lift",
-					properties: feature.properties,
-					fullCoordinates: coords,
+					startCoord: seg[0],
+					endCoord: seg[seg.length - 1],
+					category: "run",
+					properties,
+					fullCoordinates: seg,
+				});
+				lastCut = cutIdx;
+			});
+			// et le dernier segment [dernier cut .. fin]
+			const tail = coords.slice(lastCut);
+			if (tail.length > 1) {
+				simplifiedEdges.push({
+					startCoord: tail[0],
+					endCoord: tail[tail.length - 1],
+					category: "run",
+					properties,
+					fullCoordinates: tail,
 				});
 			}
 		}
 	});
+
+	// 4) Ajoute les lifts inchangés
+	simplifiedEdges.push(...liftEdges);
+
 	return simplifiedEdges;
 }
 
@@ -47,7 +122,9 @@ export function preprocessFeatures(features: any[]) {
  */
 class Graph {
 	nodes: { [key: string]: [number, number] } = {};
-	adjacencyList: { [key: string]: Array<{ node: string; weight: number; data: any }> } = {};
+	adjacencyList: {
+		[key: string]: Array<{ node: string; weight: number; data: any }>;
+	} = {};
 
 	addNode(nodeId: string, coord: [number, number]) {
 		if (!this.nodes[nodeId]) {
@@ -118,11 +195,13 @@ export function buildGraph(simplifiedEdges: any[]) {
 			const coordA = graph.nodes[nodeIdA];
 			const coordB = graph.nodes[nodeIdB];
 			const d = distance(coordA, coordB);
+			const bridgingWeight = d + BRIDGING_PENALTY;
+
 			if (d < MAX_BRIDGE_DISTANCE) {
 				const bridgingData = { bridging: true };
 				// Bridging edges are bidirectional.
-				graph.addEdge(nodeIdA, nodeIdB, d, bridgingData);
-				graph.addEdge(nodeIdB, nodeIdA, d, bridgingData);
+				graph.addEdge(nodeIdA, nodeIdB, bridgingWeight, bridgingData);
+				graph.addEdge(nodeIdB, nodeIdA, bridgingWeight, bridgingData);
 			}
 		}
 	}
@@ -132,14 +211,19 @@ export function buildGraph(simplifiedEdges: any[]) {
 }
 
 // Helper to compute the bearing (in degrees) from coord1 to coord2.
-function getBearing(coord1: [number, number], coord2: [number, number]): number {
+function getBearing(
+	coord1: [number, number],
+	coord2: [number, number]
+): number {
 	const toRad = (deg: number) => deg * (Math.PI / 180);
 	const toDeg = (rad: number) => rad * (180 / Math.PI);
 	const lat1 = toRad(coord1[1]);
 	const lat2 = toRad(coord2[1]);
 	const dLon = toRad(coord2[0] - coord1[0]);
 	const y = Math.sin(dLon) * Math.cos(lat2);
-	const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+	const x =
+		Math.cos(lat1) * Math.sin(lat2) -
+		Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
 	let brng = toDeg(Math.atan2(y, x));
 	return (brng + 360) % 360;
 }
@@ -176,7 +260,11 @@ export function findClosestNode(graph: Graph, targetCoord: [number, number]) {
 /**
  * Compute shortest path using Dijkstra's algorithm.
  */
-export function computeShortestPath(graph: Graph, startNodeId: string, endNodeId: string) {
+export function computeShortestPath(
+	graph: Graph,
+	startNodeId: string,
+	endNodeId: string
+) {
 	console.log(`Computing shortest path from ${startNodeId} to ${endNodeId}`);
 	const distances: { [key: string]: number } = {};
 	const previous: { [key: string]: string | null } = {};
@@ -197,11 +285,15 @@ export function computeShortestPath(graph: Graph, startNodeId: string, endNodeId
 			}
 		}
 		if (current === null || distances[current] === Infinity) {
-			console.log(`No more reachable nodes. Current node ${current} has distance Infinity.`);
+			console.log(
+				`No more reachable nodes. Current node ${current} has distance Infinity.`
+			);
 			break;
 		}
 		if (current === endNodeId) {
-			console.log(`Reached destination ${endNodeId} with distance ${distances[current]}`);
+			console.log(
+				`Reached destination ${endNodeId} with distance ${distances[current]}`
+			);
 			break;
 		}
 		unvisited.delete(current);
@@ -252,18 +344,23 @@ function getRunColor(properties: any) {
 export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 	console.log("Generating segmented routes from path:", path);
 	const segments: any[] = [];
-	let currentSegment = null; // For grouping consecutive non-bridging edges
+	let currentSegment: {
+		runId: string;
+		color: string;
+		coordinates: [number, number][];
+		bearing: number;
+	} | null = null;
 
 	for (let i = 0; i < path.length - 1; i++) {
 		const node1 = path[i];
 		const node2 = path[i + 1];
-		const candidateEdges = (graph.adjacencyList[node1] || []).filter((e) => e.node === node2);
-		if (candidateEdges.length === 0) {
-			console.warn("No edge found for nodes:", node1, node2);
-			continue;
-		}
-		const edge = candidateEdges[0];
+		const edge = (graph.adjacencyList[node1] || []).find(
+			(e) => e.node === node2
+		);
+		if (!edge) continue;
+
 		if (edge.data.bridging) {
+			// Si on était en train de former un run, on le termine
 			if (currentSegment) {
 				segments.push(currentSegment);
 				currentSegment = null;
@@ -274,42 +371,61 @@ export function generateSegmentedRoutes(graph: Graph, path: string[]) {
 				coordinates: [graph.nodes[node1], graph.nodes[node2]],
 			});
 		} else {
+			// run ou lift
 			const runId = edge.data.properties?.name || "unknown";
-			const segColor = edge.data.category === "run" ? getRunColor(edge.data.properties) : "black";
-			let bearing = 0;
-			// Compute bearing using the full geometry of the original feature.
-			if (edge.data.fullCoordinates && edge.data.fullCoordinates.length >= 2) {
-				bearing = getBearing(edge.data.fullCoordinates[0], edge.data.fullCoordinates[edge.data.fullCoordinates.length - 1]);
-			}
+			const color =
+				edge.data.category === "run"
+					? getRunColor(edge.data.properties)
+					: "black";
+
+			// calcule l'azimut si besoin
+			const bearing =
+				edge.data.fullCoordinates.length >= 2
+					? getBearing(
+							edge.data.fullCoordinates[0],
+							edge.data.fullCoordinates[
+								edge.data.fullCoordinates.length - 1
+							]
+					  )
+					: 0;
+
 			if (currentSegment && currentSegment.runId === runId) {
-				// Assume the full geometry already represents the entire feature.
+				// on prolonge le segment en concaténant la géométrie,
+				// mais on évite de dupliquer le point de jonction
+				const coords = edge.data.fullCoordinates;
+				currentSegment.coordinates.push(...coords.slice(1));
 			} else {
+				// on démarre un nouveau runOrLift
 				if (currentSegment) segments.push(currentSegment);
 				currentSegment = {
-					segmentType: "runOrLift",
-					runId: runId,
-					color: segColor,
-					coordinates: edge.data.fullCoordinates, // Detailed geometry from original feature.
-					bearing: bearing,
+					runId,
+					color,
+					// clonage pour ne pas muter l'original
+					coordinates: [...edge.data.fullCoordinates],
+					bearing,
 				};
 			}
 		}
 	}
+
+	// pousser le dernier
 	if (currentSegment) segments.push(currentSegment);
 
+	// transformer en GeoJSON
 	const features = segments.map((seg) => ({
 		type: "Feature",
 		properties: {
 			segmentType: seg.segmentType,
 			runId: seg.runId || "",
 			color: seg.color,
-			bearing: seg.bearing, // This will be used to rotate the arrow.
+			bearing: seg.bearing,
 		},
 		geometry: {
 			type: "LineString",
 			coordinates: seg.coordinates,
 		},
 	}));
+
 	console.log("Segmented route features generated:", features);
 	return {
 		type: "FeatureCollection",
@@ -349,11 +465,18 @@ export function calculateRouteForFeature(
 				if (cat === "run") {
 					if (!allowedFilters.runs) return false;
 					// Get difficulty from properties (adjust key names if necessary)
-					const diff = (feature.properties?.["piste:difficulty"] || feature.properties?.difficulty || "").toLowerCase();
-					if (diff === "novice" && !allowedFilters.novice) return false;
+					const diff = (
+						feature.properties?.["piste:difficulty"] ||
+						feature.properties?.difficulty ||
+						""
+					).toLowerCase();
+					if (diff === "novice" && !allowedFilters.novice)
+						return false;
 					if (diff === "easy" && !allowedFilters.easy) return false;
-					if (diff === "intermediate" && !allowedFilters.intermediate) return false;
-					if (diff === "expert" && !allowedFilters.expert) return false;
+					if (diff === "intermediate" && !allowedFilters.intermediate)
+						return false;
+					if (diff === "expert" && !allowedFilters.expert)
+						return false;
 					return true;
 				} else if (cat === "lift") {
 					return allowedFilters.lifts;
@@ -370,7 +493,9 @@ export function calculateRouteForFeature(
 	}
 	// Build the graph:
 	// If allowedFilters is provided, always rebuild the graph
-	const graph = !allowedFilters ? buildGraph(simplifiedEdges) : getGraph(simplifiedEdges);
+	const graph = !allowedFilters
+		? buildGraph(simplifiedEdges)
+		: getGraph(simplifiedEdges);
 	if (!graph) {
 		console.error("Graph could not be built.");
 		return null;
@@ -379,7 +504,8 @@ export function calculateRouteForFeature(
 	let destinationCoord: [number, number] | null = null;
 	if (selectedFeature.geometry.type === "LineString") {
 		const coords = selectedFeature.geometry.coordinates;
-		destinationCoord = direction === "top" ? coords[0] : coords[coords.length - 1];
+		destinationCoord =
+			direction === "top" ? coords[0] : coords[coords.length - 1];
 	} else if (selectedFeature.geometry.type === "Point") {
 		destinationCoord = selectedFeature.geometry.coordinates;
 	}

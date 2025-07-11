@@ -1,6 +1,13 @@
 // CollapsibleRouteSheet.tsx
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
+import {
+	View,
+	Text,
+	TouchableOpacity,
+	StyleSheet,
+	Dimensions,
+	ScrollView,
+} from "react-native";
 
 const screenHeight = Dimensions.get("window").height;
 
@@ -20,7 +27,13 @@ type CollapsibleRouteSheetProps = {
 	lockingRoute: () => void;
 };
 
-export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel, lockingRoute }: CollapsibleRouteSheetProps) {
+export function CollapsibleRouteSheet({
+	segments,
+	open,
+	onToggle,
+	onCancelTravel,
+	lockingRoute,
+}: CollapsibleRouteSheetProps) {
 	// If open, we let content define the height up to maxHeight.
 	// If collapsed, we can set a small fixed height (like 80).
 	const containerStyle = open
@@ -34,8 +47,14 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 	return (
 		<View style={[stylesSheet.container, containerStyle]}>
 			{/* Header: toggles open/close */}
-			<TouchableOpacity style={stylesSheet.header} activeOpacity={0.8} onPress={onToggle}>
-				<Text style={{ fontWeight: "bold" }}>{open ? "Route Instructions ▼" : "Route Instructions ▲"}</Text>
+			<TouchableOpacity
+				style={stylesSheet.header}
+				activeOpacity={0.8}
+				onPress={onToggle}
+			>
+				<Text style={{ fontWeight: "bold" }}>
+					{open ? "Route Instructions ▼" : "Route Instructions ▲"}
+				</Text>
 			</TouchableOpacity>
 
 			{/* Body: timeline of segments + cancel button */}
@@ -44,7 +63,7 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 					const { segmentType, runId, color } = seg.properties;
 					let label = "";
 					if (segmentType === "bridging") {
-						label = "Walk (blue dotted line)";
+						label = "Walk (green dotted line)";
 					} else {
 						label = runId ? `Take ${runId}` : "Take unknown route";
 					}
@@ -57,12 +76,21 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 						<View key={idx} style={stylesSheet.timelineRow}>
 							{/* The timeline column */}
 							<View style={stylesSheet.timelineCol}>
-								<View style={[stylesSheet.bullet, { borderColor: color || "blue" }]} />
-								{!isLast && <View style={stylesSheet.verticalLine} />}
+								<View
+									style={[
+										stylesSheet.bullet,
+										{ borderColor: color || "green" },
+									]}
+								/>
+								{!isLast && (
+									<View style={stylesSheet.verticalLine} />
+								)}
 							</View>
 							{/* The label text */}
 							<View style={{ flex: 1 }}>
-								<Text style={stylesSheet.labelText}>{label}</Text>
+								<Text style={stylesSheet.labelText}>
+									{label}
+								</Text>
 							</View>
 						</View>
 					);
@@ -72,11 +100,21 @@ export function CollapsibleRouteSheet({ segments, open, onToggle, onCancelTravel
 			{/* Footer with the Cancel button */}
 
 			<View style={stylesSheet.footer}>
-				<TouchableOpacity style={stylesSheet.cancelBtn} onPress={onCancelTravel}>
-					<Text style={{ color: "#fff", fontWeight: "bold" }}>Cancel Travel</Text>
+				<TouchableOpacity
+					style={stylesSheet.cancelBtn}
+					onPress={onCancelTravel}
+				>
+					<Text style={{ color: "#fff", fontWeight: "bold" }}>
+						Cancel Travel
+					</Text>
 				</TouchableOpacity>
-				<TouchableOpacity style={stylesSheet.lockBtn} onPress={lockingRoute}>
-					<Text style={{ color: "#fff", fontWeight: "bold" }}>Let's go</Text>
+				<TouchableOpacity
+					style={stylesSheet.lockBtn}
+					onPress={lockingRoute}
+				>
+					<Text style={{ color: "#fff", fontWeight: "bold" }}>
+						Let's go
+					</Text>
 				</TouchableOpacity>
 			</View>
 		</View>

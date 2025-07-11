@@ -1,13 +1,28 @@
-// hooks/useStationData.ts
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchStationsData, fetchStationCoordinates } from "@/api/skiApi";
-import { StationAssets, StationCoordinates, StationData, UseStationDataResult } from "@/interfaces/datas/StationData";
+import {
+	CityFeature,
+	StationAssets,
+	StationCoordinates,
+	StationData,
+	UseStationDataResult,
+} from "@/interfaces/datas/StationData";
+import type { FeatureCollection, Point } from "geojson";
 
-export const useStationData = (station: { osmId: string; name: string } | null): UseStationDataResult => {
+export const useStationData = (
+	station: { osmId: string; name: string } | null
+): UseStationDataResult & {
+	stationCities: FeatureCollection<Point, { name: string }> | null;
+} => {
 	const [stationData, setStationData] = useState<StationData | null>(null);
-	const [stationCoordinates, setStationCoordinates] = useState<StationCoordinates | null>(null);
+	const [stationCoordinates, setStationCoordinates] =
+		useState<StationCoordinates | null>(null);
 	const [assets, setAssets] = useState<StationAssets | null>(null);
+	const [stationCities, setStationCities] = useState<FeatureCollection<
+		Point,
+		{ name: string }
+	> | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
@@ -18,81 +33,124 @@ export const useStationData = (station: { osmId: string; name: string } | null):
 			isFetching.current = true;
 
 			try {
-				let storedStationData = await AsyncStorage.getItem(`stationData-${station.osmId}`);
-				let storedDelimitations = await AsyncStorage.getItem(`stationsDelimitations-${station.osmId}`);
-				let runs, lifts;
+				const dataKey = `stationData-${station.osmId}`;
+				const delimKey = `stationsDelimitations-${station.osmId}`;
+				const runsKey = `stationRuns-${station.osmId}`;
+				const liftsKey = `stationLifts-${station.osmId}`;
+				const citiesKey = `stationCities-${station.osmId}`;
 
-				if (storedStationData && storedDelimitations) {
-					storedStationData = JSON.parse(storedStationData);
-					storedDelimitations = JSON.parse(storedDelimitations);
-					runs = JSON.parse(await AsyncStorage.getItem(`stationRuns-${station.osmId}`)) || {};
-					lifts = JSON.parse(await AsyncStorage.getItem(`stationLifts-${station.osmId}`)) || {};
+				const [sDataJSON, sDelimJSON, runsJSON, liftsJSON, citiesJSON] =
+					await Promise.all([
+						AsyncStorage.getItem(dataKey),
+						AsyncStorage.getItem(delimKey),
+						AsyncStorage.getItem(runsKey),
+						AsyncStorage.getItem(liftsKey),
+						AsyncStorage.getItem(citiesKey),
+					]);
+
+				let storedStationData: StationData;
+				let storedDelimitations: StationCoordinates;
+				let runs: any;
+				let lifts: any;
+				let citiesGeoJson: FeatureCollection<Point, { name: string }>;
+
+				const cacheHit =
+					sDataJSON &&
+					sDelimJSON &&
+					runsJSON &&
+					liftsJSON &&
+					citiesJSON;
+
+				if (cacheHit) {
+					storedStationData = JSON.parse(sDataJSON!);
+					storedDelimitations = JSON.parse(sDelimJSON!);
+					runs = JSON.parse(runsJSON!);
+					lifts = JSON.parse(liftsJSON!);
+					citiesGeoJson = JSON.parse(citiesJSON!);
 				} else {
-					// Fetch fresh data
 					storedStationData = await fetchStationsData(station);
-					if (!storedStationData) {
-						console.error(`Failed to fetch station data for: ${station.osmId}`);
+					if (!storedStationData) return;
+
+					const fetched = await fetchStationCoordinates(
+						storedStationData.domain,
+						station.osmId
+					);
+					if (!fetched || !fetched.stationsDelimitations?.features)
 						return;
-					}
 
-					const fetchedData = await fetchStationCoordinates(storedStationData.domain, station.osmId);
-					if (!fetchedData || !fetchedData.stationsDelimitations || !fetchedData.stationsDelimitations.features) {
-						console.error(`Failed to fetch coordinates for: ${station.osmId}`);
-						return;
-					}
+					storedDelimitations = fetched.stationsDelimitations;
+					runs = fetched.runs || {};
+					lifts = fetched.lifts || {};
 
-					storedDelimitations = fetchedData.stationsDelimitations;
-					runs = fetchedData.runs || {};
-					lifts = fetchedData.lifts || {};
-
-					// Cache the fetched data
-
-					// create a counter scoped to this station-load
 					let idCounter = 0;
-
-					// helper to walk a FeatureCollection and give each feature a unique numeric id
-					const injectIncrementalId = (fc) => ({
+					const injectIds = (fc: any) => ({
 						...fc,
-						features: fc.features.map((f) => ({
+						features: fc.features.map((f: any) => ({
 							...f,
-							id: idCounter++, // will be 0,1,2,3,... across *all* runs & lifts
+							id: idCounter++,
 						})),
 					});
 
-					// re‐wrap all your raw FCs with injected ids
 					runs = {
-						easy: injectIncrementalId(runs.easy || { features: [] }),
-						novice: injectIncrementalId(runs.novice || { features: [] }),
-						intermediate: injectIncrementalId(runs.intermediate || { features: [] }),
-						expert: injectIncrementalId(runs.expert || { features: [] }),
-						nullDiff: injectIncrementalId(runs.nullDiff || { features: [] }),
-						unknown: injectIncrementalId(runs.unknown || { features: [] }),
-					};
-					lifts = {
-						liftLines: injectIncrementalId(lifts.liftLines || { features: [] }),
-						liftStartPoints: injectIncrementalId(lifts.liftStartPoints || { features: [] }),
+						easy: injectIds(runs.easy || { features: [] }),
+						novice: injectIds(runs.novice || { features: [] }),
+						intermediate: injectIds(
+							runs.intermediate || { features: [] }
+						),
+						expert: injectIds(runs.expert || { features: [] }),
+						nullDiff: injectIds(runs.nullDiff || { features: [] }),
+						unknown: injectIds(runs.unknown || { features: [] }),
 					};
 
-					await AsyncStorage.setItem(`stationData-${station.osmId}`, JSON.stringify(storedStationData));
-					await AsyncStorage.setItem(`stationsDelimitations-${station.osmId}`, JSON.stringify(storedDelimitations));
-					await AsyncStorage.setItem(`stationRuns-${station.osmId}`, JSON.stringify(runs));
-					await AsyncStorage.setItem(`stationLifts-${station.osmId}`, JSON.stringify(lifts));
+					lifts = {
+						liftLines: injectIds(
+							lifts.liftLines || { features: [] }
+						),
+						liftStartPoints: injectIds(
+							lifts.liftStartPoints || { features: [] }
+						),
+					};
+
+					citiesGeoJson = fetched.allCities;
+
+					await AsyncStorage.setItem(
+						dataKey,
+						JSON.stringify(storedStationData)
+					);
+					await AsyncStorage.setItem(
+						delimKey,
+						JSON.stringify(storedDelimitations)
+					);
+					await AsyncStorage.setItem(runsKey, JSON.stringify(runs));
+					await AsyncStorage.setItem(liftsKey, JSON.stringify(lifts));
+					if (citiesGeoJson) {
+						await AsyncStorage.setItem(
+							citiesKey,
+							JSON.stringify(citiesGeoJson)
+						);
+					}
 				}
 
 				setStationData(storedStationData);
 				setStationCoordinates(storedDelimitations);
 				setAssets({ runs, lifts });
+				setStationCities(citiesGeoJson);
 			} catch (error) {
-				console.error("Error fetching station data:", error);
+				console.error("Error in useStationData:", error);
 			} finally {
 				isFetching.current = false;
 				setIsLoading(false);
-				console.log("Stations Data retrieved !");
 			}
 		};
 
 		getStationData();
 	}, [station]);
 
-	return { stationData, stationCoordinates, assets, isLoading };
+	return {
+		stationData,
+		stationCoordinates,
+		assets,
+		stationCities,
+		isLoading,
+	};
 };
