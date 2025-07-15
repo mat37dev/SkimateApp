@@ -66,7 +66,7 @@ const MapStyleConfig = {
 	RunArrowTextOpacity: 1, // Opacité des flèches
 	RunArrowTextRotationAlignment: "map", // *NE PAS TOUCHER* - Alignement de la rotation du texte des flèches
 	RunArrowTextPitchAlignment: "map", // *NE PAS TOUCHER* - Alignement de l'inclinaison du texte des flèches
-	RunArrowTextKeepUpright: true, // *NE PAS TOUCHER* - Garde le texte des flèches droit
+	RunArrowTextKeepUpright: false, // *NE PAS TOUCHER* - Garde le texte des flèches droit
 
 	/* LIFTS */
 

@@ -68,8 +68,23 @@ const NavBar: React.FC<NavBarProps> = () => {
 				return (
 					<Link key={item.label} href={item.href} asChild>
 						<TouchableOpacity style={styles.navItem}>
-							<IconComponent name={item.iconName} size={24} color={isActive ? activeColor : inactiveColor} />
-							<Text style={[styles.label, { color: isActive ? activeColor : inactiveColor }]}>{item.label}</Text>
+							<IconComponent
+								name={item.iconName}
+								size={24}
+								color={isActive ? activeColor : inactiveColor}
+							/>
+							<Text
+								style={[
+									styles.label,
+									{
+										color: isActive
+											? activeColor
+											: inactiveColor,
+									},
+								]}
+							>
+								{item.label}
+							</Text>
 						</TouchableOpacity>
 					</Link>
 				);

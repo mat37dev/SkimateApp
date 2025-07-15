@@ -15,7 +15,7 @@ import { useStationData } from "@/hooks/useStationData";
 
 // Styles
 import styles from "@/styles/mapStyles";
-import MapStyleConfig from "@/constants/mapStyles";
+import MapStyleConfig from "@/constants/map/mapStyles";
 import {
 	calculateRouteForFeature,
 	getGraph,
@@ -23,7 +23,7 @@ import {
 } from "@/hooks/calculateRoute";
 import { CollapsibleRouteSheet } from "@/components/Modals/CollapsibleRouteSheet";
 import { RoundedButton } from "@/components/btns/RoundedButton";
-import { SkiMap } from "@/components/SkiMap";
+import { SkiMap } from "@/components/map/SkiMap";
 import { FontAwesome6, Ionicons } from "@expo/vector-icons";
 import { useSkiMap } from "@/hooks/useSkiMap";
 
@@ -36,8 +36,9 @@ import {
 } from "@/hooks/useCamera";
 import { LoadingModal } from "@/components/Modals/LoadingModal";
 import { useUserLocation } from "@/hooks/useUserLocation";
+import { mapVariables } from "@/constants/map/mapConfigVariables";
 
-export default function MapScreen() {
+export default function map() {
 	const backgroundColor = useThemeColor({}, "background");
 	const mapCameraRef = useRef<any>(null);
 
@@ -121,9 +122,7 @@ export default function MapScreen() {
 	// Set Mapbox token on mount
 	useEffect(() => {
 		clearStorage();
-		MapboxGL.setAccessToken(
-			"pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A"
-		);
+		MapboxGL.setAccessToken(process.env.MAPBOX_ACCESS_TOKEN);
 	}, []);
 
 	//For testing purposes, the data are usually stored in the cache
@@ -160,13 +159,14 @@ export default function MapScreen() {
 		setSheetOpen(false);
 		setGpsMode(true);
 	}
+
 	const handleFeatureSelect = (feature: any) => {
-		console.log("feature selected:", feature);
-		console.log("tapped feature.id:", feature.id);
 		setSearchModalVisible(false);
 
-		const selected =
-			combinedList.find((item) => item.id === feature.id) || feature;
+		const fullFeature = combinedList.find(
+			(item) => String(item.id) === String(feature.id)
+		);
+		const selected = fullFeature || feature;
 
 		const targetCoord =
 			selected.geometry.type === "LineString"
@@ -176,9 +176,10 @@ export default function MapScreen() {
 				: selected.geometry.coordinates;
 
 		console.log("target coord:", targetCoord);
+
+		setSelectedFeature(selected);
 		setCameraToCoordinates(mapCameraRef, targetCoord);
 		setRouteFeature(null);
-		setSelectedFeature(selected);
 		setInfoModalVisible(true);
 	};
 
@@ -237,87 +238,14 @@ export default function MapScreen() {
 		resetToStation2D(
 			mapCameraRef,
 			Number(selectedStation?.longitude),
-			Number(selectedStation?.latitude)
+			Number(selectedStation?.latitude),
+			mapVariables.DEFAULT_ZOOM_LEVEL,
+			mapVariables.RECENTERING_ZOOM_DURATION
 		);
 
 		setShowDestinationPoint(false);
 		setDestinationCoord(null);
 	}
-
-	// Define runLayers to pass to SkiMap
-	const runLayers = (
-		shapeId: string,
-		lineId: string,
-		color: string,
-		labelId: string,
-		arrowId: string,
-		shapeData: any
-	) => {
-		const hasArrow = shapeData.features.some(
-			(f) =>
-				f.properties.orientation &&
-				!["unknown", "flat"].includes(f.properties.orientation)
-		);
-		return (
-			<MapboxGL.ShapeSource
-				id={shapeId}
-				shape={shapeData}
-				onPress={handleMapFeaturePress}
-			>
-				<MapboxGL.LineLayer
-					id={lineId}
-					style={{
-						lineColor: color,
-						lineWidth: MapStyleConfig.RunLineWidth,
-						lineOpacity: MapStyleConfig.RunLineOpacity,
-					}}
-				/>
-				<MapboxGL.SymbolLayer
-					id={labelId}
-					minZoomLevel={MapStyleConfig.RunLabelTextDistanceApparition}
-					style={{
-						textField: ["get", "name"], // ce qu'on affiche
-						symbolPlacement: MapStyleConfig.RunLabelSymbolPlacement, // où on l'affiche
-						textSize: MapStyleConfig.RunLabelFontSize,
-						textColor: color, // Même couleur que la piste
-						textHaloWidth: MapStyleConfig.RunLabelHaloWidth,
-						textHaloColor: MapStyleConfig.RunLabelHaloColor,
-						textOpacity: MapStyleConfig.RunLabelTextOpacity,
-						textFont: [
-							MapStyleConfig.RunLabelTextFont || "Open Sans Bold",
-						],
-						textAllowOverlap: MapStyleConfig.RunLabelAllowOverlap,
-
-						textIgnorePlacement:
-							MapStyleConfig.RunLabelTextIgnorePlacement,
-					}}
-				/>
-				{hasArrow && (
-					<MapboxGL.SymbolLayer
-						id={arrowId}
-						minZoomLevel={MapStyleConfig.RunArrowDistanceApparition}
-						style={{
-							textField: MapStyleConfig.RunArrowTextField, // ce qu'on affiche
-							symbolPlacement:
-								MapStyleConfig.RunArrowsSymbolPlacement,
-							textSize: MapStyleConfig.RunArrowTextSize,
-							textColor: color, // Même couleur que la piste
-							textOpacity: MapStyleConfig.RunArrowTextOpacity,
-							textHaloWidth: MapStyleConfig.RunArrowHaloWidth,
-							textHaloColor: MapStyleConfig.RunArrowHaloColor,
-							symbolSpacing: MapStyleConfig.RunArrowSymbolSpacing,
-							textRotationAlignment:
-								MapStyleConfig.RunArrowTextRotationAlignment,
-							textPitchAlignment:
-								MapStyleConfig.RunArrowTextPitchAlignment,
-							textKeepUpright:
-								MapStyleConfig.RunArrowTextKeepUpright,
-						}}
-					/>
-				)}
-			</MapboxGL.ShapeSource>
-		);
-	};
 
 	return (
 		<View style={[styles.container, { backgroundColor }]}>
@@ -407,10 +335,12 @@ export default function MapScreen() {
 								Number(selectedStation.longitude),
 								Number(selectedStation.latitude),
 							],
-							zoomLevel: 11,
-							pitch: is3D ? 70 : 0,
-							animationMode: "flyTo",
-							animationDuration: 1000,
+							zoomLevel: mapVariables.DEFAULT_ZOOM_LEVEL,
+							pitch: is3D ? mapVariables.DEFAULT_PITCH_3D : 0,
+							animationMode:
+								mapVariables.RECENTERING_ZOOM_ANIMATION_MODE,
+							animationDuration:
+								mapVariables.RECENTERING_ZOOM_DURATION,
 						});
 					}
 				}}
@@ -423,7 +353,6 @@ export default function MapScreen() {
 				showDestinationPoint={showDestinationPoint}
 				destinationCoord={destinationCoord}
 				onMapFeaturePress={handleMapFeaturePress}
-				runLayers={runLayers}
 				showRuns={showRuns}
 				showLifts={showLifts}
 				showNovice={showNovice}
@@ -463,8 +392,8 @@ export default function MapScreen() {
 						if (!userLocation) return;
 						mapCameraRef.current?.setCamera({
 							centerCoordinate: userLocation,
-							zoomLevel: 15,
-							animationDuration: 1000,
+							zoomLevel: mapVariables.BTN_ZOOM_LEVEL,
+							animationDuration: mapVariables.BTN_ZOOM_DURATION,
 						});
 					}}
 				>
