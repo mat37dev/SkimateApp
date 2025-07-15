@@ -3,6 +3,7 @@ import MapboxGL, { UserTrackingMode } from "@rnmapbox/maps";
 import { View, Image, Text } from "react-native";
 import styles from "@/styles/mapStyles";
 import type { SkiMapProps } from "../interfaces/SkiMap";
+import MapStyleConfig from "@/constants/mapStyles";
 
 export function SkiMap({
 	cameraCenter,
@@ -205,8 +206,9 @@ export function SkiMap({
 							id={`normalLayer-${index}`}
 							style={{
 								lineColor: ["get", "color"],
-								lineWidth: 4,
-								lineOpacity: 1,
+								lineWidth: MapStyleConfig.RouteSegmentLineWidth,
+								lineOpacity:
+									MapStyleConfig.RouteSegmentLineOpacity,
 							}}
 						/>
 					</MapboxGL.ShapeSource>
@@ -218,29 +220,33 @@ export function SkiMap({
 					<MapboxGL.LineLayer
 						id='stationLayer'
 						style={{
-							lineColor: "#1E90FF",
-							lineWidth: 2,
-							lineOpacity: 1,
-							lineJoin: "round",
-							lineCap: "round",
+							lineColor: MapStyleConfig.StationLineColor,
+							lineWidth: MapStyleConfig.StationLineWidth,
+							lineOpacity: MapStyleConfig.StationLineOpacity,
+							lineJoin: MapStyleConfig.StationLineJoin,
+							lineCap: MapStyleConfig.StationLineCap,
 						}}
 					/>
 					<MapboxGL.SymbolLayer
 						id='stationLabelLayer'
 						style={{
-							symbolPlacement: "line",
+							symbolPlacement:
+								MapStyleConfig.StationLabelSymbolPlacement,
 							textField: ["get", "domain"],
-							textSize: 15,
-							textColor: "#1E90FF",
-							textHaloWidth: 2,
-							textHaloColor: "#ffffff",
-							textAllowOverlap: false,
-							textFont: ["Open Sans Bold"],
-							textOpacity: 1,
+							textSize: MapStyleConfig.StationLabelFontSize,
+							textColor: MapStyleConfig.StationLabelColor,
+							textHaloWidth: MapStyleConfig.StationLabelHaloWidth,
+							textHaloColor: MapStyleConfig.StationLabelHaloColor,
+							textAllowOverlap:
+								MapStyleConfig.StationLabelAllowOverlap,
+							textFont: [MapStyleConfig.StationLabelTextFont],
+							textOpacity: MapStyleConfig.StationLabelTextOpacity,
 						}}
 					/>
 				</MapboxGL.ShapeSource>
 			)}
+
+			{/* Station cities */}
 			{stationCities && stationCities.features.length > 0 && (
 				<MapboxGL.ShapeSource
 					id='citySource'
@@ -248,21 +254,29 @@ export function SkiMap({
 					key={`citySource-${stationCities.features.length}`}
 				>
 					<MapboxGL.SymbolLayer
-						minZoomLevel={11.5}
-						maxZoomLevel={13.5}
+						minZoomLevel={
+							MapStyleConfig.CityLabelMinimumDistanceApparition
+						}
+						maxZoomLevel={
+							MapStyleConfig.CityLabelMaximumDistanceApparition
+						}
 						id='cityLabelLayer'
 						style={{
 							textField: ["get", "name"],
-							textSize: 14,
-							textColor: "#000",
-							textHaloWidth: 1,
-							textHaloColor: "#fff",
-							textAllowOverlap: false,
-							textIgnorePlacement: false,
+							textSize: MapStyleConfig.CityLabelFontSize,
+							textColor: MapStyleConfig.CityLabelColor,
+							textHaloWidth: MapStyleConfig.CityLabelHaloWidth,
+							textHaloColor: MapStyleConfig.CityLabelHaloColor,
+							textAllowOverlap:
+								MapStyleConfig.CityLabelAllowOverlap,
+							textIgnorePlacement:
+								MapStyleConfig.CityLabelTextIgnorePlacement,
+							textOpacity: MapStyleConfig.CityLabelTextOpacity,
 						}}
 					/>
 				</MapboxGL.ShapeSource>
 			)}
+
 			{/* Lift lines (shown only if showLifts is true) */}
 			{showLifts && liftLines.features.length > 0 && (
 				<MapboxGL.ShapeSource
@@ -273,51 +287,58 @@ export function SkiMap({
 					<MapboxGL.LineLayer
 						id='liftLineLayer'
 						style={{
-							lineColor: "black",
-							lineWidth: [
-								"interpolate",
-								["linear"],
-								["zoom"],
-								10,
-								0.8, // far out: thinner
-								14,
-								1.4, // zoomed in: normal
-							],
-							lineDasharray: [2, 2],
-							lineOpacity: 0.7,
+							lineColor: MapStyleConfig.LiftLineColor,
+							lineWidth: MapStyleConfig.LiftLineWidth,
+							lineDasharray: MapStyleConfig.LiftLineDashArray,
+							lineOpacity: MapStyleConfig.LiftLineOpacity,
 						}}
 					/>
 					<MapboxGL.SymbolLayer
 						id='liftLineLabelLayer'
-						minZoomLevel={13.5}
+						minZoomLevel={
+							MapStyleConfig.LiftLabelTextDistanceApparition
+						}
 						style={{
-							symbolPlacement: "line",
-							textField: ["get", "name"],
-							textSize: 14,
-							textColor: "#000",
-							textHaloWidth: 3,
-							textHaloColor: "#fff",
-							textFont: ["Open Sans Bold"],
-							textAllowOverlap: true,
-							textIgnorePlacement: true,
-							textOpacity: 0.7,
+							textField: ["get", "name"], // ce qu'on affiche
+							symbolPlacement:
+								MapStyleConfig.LiftLabelSymbolPlacement, // où on l'affiche
+							textSize: MapStyleConfig.LiftLabelFontSize,
+							textColor: MapStyleConfig.LiftLabelColor,
+							textHaloWidth: MapStyleConfig.LiftLabelHaloWidth,
+							textHaloColor: MapStyleConfig.LiftLabelHaloColor,
+							textFont: [
+								MapStyleConfig.LiftLabelTextFont ||
+									"Open Sans Bold",
+							],
+							textAllowOverlap:
+								MapStyleConfig.LiftLabelAllowOverlap,
+							textIgnorePlacement:
+								MapStyleConfig.LiftLabelTextIgnorePlacement,
+							textOpacity: MapStyleConfig.LiftLabelTextOpacity,
 						}}
 					/>
 					<MapboxGL.SymbolLayer
 						id='liftLineArrowLayer'
-						minZoomLevel={15}
+						minZoomLevel={
+							MapStyleConfig.LiftArrowDistanceApparition
+						}
 						style={{
-							symbolPlacement: "line",
-							symbolSpacing: 200,
-							textField: "▶",
-							textSize: 30,
-							textColor: "black",
-							textHaloWidth: 0,
-							textHaloColor: "#ffffff",
-							textOpacity: 1,
-							textRotationAlignment: "map",
-							textPitchAlignment: "map",
-							textKeepUpright: false,
+							symbolSpacing:
+								MapStyleConfig.LiftArrowSymbolSpacing, // ce qu'on affiche
+							symbolPlacement:
+								MapStyleConfig.LiftArrowSymbolPlacement, // où on l'affiche
+							textField: MapStyleConfig.LiftArrowTextField,
+							textSize: MapStyleConfig.LiftArrowTextSize,
+							textColor: MapStyleConfig.LiftLineColor,
+							textOpacity: MapStyleConfig.LiftArrowTextOpacity,
+							textHaloWidth: MapStyleConfig.LiftArrowHaloWidth,
+							textHaloColor: MapStyleConfig.LiftArrowHaloColor,
+							textRotationAlignment:
+								MapStyleConfig.LiftArrowTextRotationAlignment,
+							textPitchAlignment:
+								MapStyleConfig.LiftArrowTextPitchAlignment,
+							textKeepUpright:
+								MapStyleConfig.LiftArrowTextKeepUpright,
 						}}
 					/>
 				</MapboxGL.ShapeSource>
@@ -332,7 +353,7 @@ export function SkiMap({
 				>
 					<MapboxGL.SymbolLayer
 						id='liftStartPointsLayer'
-						minZoomLevel={15}
+						minZoomLevel={MapStyleConfig.LiftIconDistanceApparition}
 						style={{
 							iconImage: [
 								"match",

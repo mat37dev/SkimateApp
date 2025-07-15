@@ -15,6 +15,7 @@ import { useStationData } from "@/hooks/useStationData";
 
 // Styles
 import styles from "@/styles/mapStyles";
+import MapStyleConfig from "@/constants/mapStyles";
 import {
 	calculateRouteForFeature,
 	getGraph,
@@ -267,50 +268,50 @@ export default function MapScreen() {
 					id={lineId}
 					style={{
 						lineColor: color,
-						lineWidth: [
-							"interpolate",
-							["linear"],
-							["zoom"],
-							10,
-							0.8, // far out: thinner
-							14,
-							1.4, // zoomed in: normal
-						],
-						lineOpacity: 0.7,
+						lineWidth: MapStyleConfig.RunLineWidth,
+						lineOpacity: MapStyleConfig.RunLineOpacity,
 					}}
 				/>
 				<MapboxGL.SymbolLayer
 					id={labelId}
-					minZoomLevel={13.5}
+					minZoomLevel={MapStyleConfig.RunLabelTextDistanceApparition}
 					style={{
-						symbolPlacement: "line",
-						textField: ["get", "name"],
-						textSize: 14,
-						textColor: color,
-						textHaloWidth: 3,
-						textHaloColor: "#fff",
-						textAllowOverlap: true,
-						textFont: ["Open Sans Bold"],
-						textIgnorePlacement: true,
-						textOpacity: 0.7,
+						textField: ["get", "name"], // ce qu'on affiche
+						symbolPlacement: MapStyleConfig.RunLabelSymbolPlacement, // où on l'affiche
+						textSize: MapStyleConfig.RunLabelFontSize,
+						textColor: color, // Même couleur que la piste
+						textHaloWidth: MapStyleConfig.RunLabelHaloWidth,
+						textHaloColor: MapStyleConfig.RunLabelHaloColor,
+						textOpacity: MapStyleConfig.RunLabelTextOpacity,
+						textFont: [
+							MapStyleConfig.RunLabelTextFont || "Open Sans Bold",
+						],
+						textAllowOverlap: MapStyleConfig.RunLabelAllowOverlap,
+
+						textIgnorePlacement:
+							MapStyleConfig.RunLabelTextIgnorePlacement,
 					}}
 				/>
 				{hasArrow && (
 					<MapboxGL.SymbolLayer
 						id={arrowId}
-						minZoomLevel={15}
+						minZoomLevel={MapStyleConfig.RunArrowDistanceApparition}
 						style={{
-							symbolPlacement: "line",
-							symbolSpacing: 200,
-							textField: "▶",
-							textSize: 30,
-							textColor: color,
-							textHaloWidth: 0,
-							textHaloColor: "#ffffff",
-							textOpacity: 1,
-							textRotationAlignment: "map", // Align with the map, not the viewport
-							textPitchAlignment: "map",
-							textKeepUpright: false, // Prevent auto-flipping
+							textField: MapStyleConfig.RunArrowTextField, // ce qu'on affiche
+							symbolPlacement:
+								MapStyleConfig.RunArrowsSymbolPlacement,
+							textSize: MapStyleConfig.RunArrowTextSize,
+							textColor: color, // Même couleur que la piste
+							textOpacity: MapStyleConfig.RunArrowTextOpacity,
+							textHaloWidth: MapStyleConfig.RunArrowHaloWidth,
+							textHaloColor: MapStyleConfig.RunArrowHaloColor,
+							symbolSpacing: MapStyleConfig.RunArrowSymbolSpacing,
+							textRotationAlignment:
+								MapStyleConfig.RunArrowTextRotationAlignment,
+							textPitchAlignment:
+								MapStyleConfig.RunArrowTextPitchAlignment,
+							textKeepUpright:
+								MapStyleConfig.RunArrowTextKeepUpright,
 						}}
 					/>
 				)}

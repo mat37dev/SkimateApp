@@ -57,6 +57,14 @@ npx expo run:android
 
 ## Dépannage
 
+### ❌ Erreur liée à l'absence du fichier local.properties
+
+N’oubliez pas d’ajouter cette ligne dans le fichier `android/local.properties` :
+
+```gradle
+sdk.dir=C:\\Users\\PATH_TO_SDK
+```
+
 ### ❌ Erreur liée à Mapbox lors du build
 
 N’oubliez pas d’ajouter cette ligne dans le fichier `android/build.gradle` :
