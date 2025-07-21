@@ -1,7 +1,9 @@
 import apiClient from "@/api/apiClient";
+import { Station } from "@/interfaces/datas/StationData";
 
 // Fetch all stations (+ osmId)
-export const fetchStations = async () => {
+export const fetchStations = async (): Promise<Station[]> => {
+	console.log("Fetching all ski stations…");
 	try {
 		const response = await apiClient("/api/stations", {
 			method: "GET",
@@ -10,22 +12,6 @@ export const fetchStations = async () => {
 	} catch (error) {
 		console.error("Error fetching stations:", error);
 		return [];
-	}
-};
-
-// Fetch station info
-export const fetchStationsData = async (station) => {
-	if (!station || !station.osmId) return null;
-	try {
-		const response = await apiClient("/api/station/information", {
-			method: "POST",
-			body: JSON.stringify({ osmId: station.osmId }),
-		});
-
-		return response;
-	} catch (error) {
-		console.error("Error fetching station data:", error);
-		return null;
 	}
 };
 
@@ -46,6 +32,9 @@ const processCoordinates = (coordinates, orientation, category) => {
 };
 
 export const fetchStationCoordinates = async (domain, stationOsmId) => {
+	console.log(
+		`Fetching coordinates for station ${stationOsmId} in domain ${domain}...`
+	);
 	try {
 		const response = await apiClient("/api/get-ski-domain", {
 			method: "POST",

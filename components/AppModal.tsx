@@ -10,10 +10,18 @@ interface AppModalProps {
 
 export const AppModal = ({ visible, onClose, children }: AppModalProps) => {
 	return (
-		<Modal visible={visible} transparent animationType='slide' onRequestClose={onClose}>
+		<Modal
+			visible={visible}
+			transparent
+			animationType='slide'
+			onRequestClose={onClose}
+		>
 			<Pressable style={styles.modalOverlay} onPress={onClose}>
 				<View style={styles.modalContainer}>
-					<Pressable onPress={(e) => e.stopPropagation()} style={{ flex: 1 }}>
+					<Pressable
+						onPress={(e) => e.stopPropagation()}
+						style={{ flex: 1 }}
+					>
 						{children}
 					</Pressable>
 				</View>

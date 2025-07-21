@@ -48,7 +48,7 @@ const MapStyleConfig = {
 	RunLabelFontSize: 14, // Taille de la police des labels de course
 	RunLabelTextOpacity: 0.7, // Opacité du texte des labels de cours
 	RunLabelTextDistanceApparition: 13.5, // Distance d'apparition des labels de course
-	RunLabelHaloWidth: 3, // Largeur de l'auréole des labels
+	RunLabelHaloWidth: 4, // Largeur de l'auréole des labels
 	RunLabelHaloColor: "#fff", // Couleur de l'auréole des labels de course
 	RunLabelAllowOverlap: true, // Permettre le chevauchement des labels
 	RunLabelTextFont: "Open Sans Bold", // Police des labels de course

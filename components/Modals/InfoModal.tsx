@@ -5,7 +5,12 @@ import { ScrollView, Text, View, TouchableOpacity } from "react-native";
 import { AppModal } from "@/components/AppModal";
 import { InfoModalProps } from "@/interfaces/logic/InfosModal";
 
-export const InfoModal = ({ visible, onClose, selectedFeature, onTravel }: InfoModalProps) => {
+export const InfoModal = ({
+	visible,
+	onClose,
+	selectedFeature,
+	onTravel,
+}: InfoModalProps) => {
 	if (!selectedFeature) return null;
 	const { properties = {} } = selectedFeature;
 	const { category, name, difficulty, tags = {} } = properties;
@@ -19,7 +24,9 @@ export const InfoModal = ({ visible, onClose, selectedFeature, onTravel }: InfoM
 	return (
 		<AppModal visible={visible} onClose={onClose}>
 			<ScrollView>
-				<Text style={styles.modalTitle}>{isRun ? "Ski Run Information" : "Lift Information"}</Text>
+				<Text style={styles.modalTitle}>
+					{isRun ? "Ski Run Information" : "Lift Information"}
+				</Text>
 				<Text style={styles.infoLine}>
 					<Text style={styles.infoLabel}>Name: </Text>
 					{name || "Unknown"}
@@ -47,18 +54,35 @@ export const InfoModal = ({ visible, onClose, selectedFeature, onTravel }: InfoM
 							{liftType}
 						</Text>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Opening Hours: </Text>
+							<Text style={styles.infoLabel}>
+								Opening Hours:{" "}
+							</Text>
 							{openingHours}
 						</Text>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Description / Note: </Text>
+							<Text style={styles.infoLabel}>
+								Description / Note:{" "}
+							</Text>
 							{description}
 						</Text>
 					</>
 				)}
 			</ScrollView>
-			<View style={{ flexDirection: "row", justifyContent: "space-around", marginVertical: 10 }}>
-				<TouchableOpacity style={{ padding: 10, backgroundColor: "#ddd", borderRadius: 5 }} onPress={onTravel}>
+			<View
+				style={{
+					flexDirection: "row",
+					justifyContent: "space-around",
+					marginVertical: 10,
+				}}
+			>
+				<TouchableOpacity
+					style={{
+						padding: 10,
+						backgroundColor: "#ddd",
+						borderRadius: 5,
+					}}
+					onPress={onTravel}
+				>
 					<Text>Travel to</Text>
 				</TouchableOpacity>
 			</View>

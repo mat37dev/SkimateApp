@@ -39,6 +39,26 @@ function getRunsAndLifts(assets: any) {
 	};
 }
 
+function getLabelLayerId(selectedFeature) {
+	if (!selectedFeature?.properties) return "runEasyLabelLayer";
+	switch (selectedFeature.properties.difficulty) {
+		case "easy":
+			return "runEasyLabelLayer";
+		case "novice":
+			return "runNoviceLabelLayer";
+		case "intermediate":
+			return "runIntermediateLabelLayer";
+		case "expert":
+			return "runExpertLabelLayer";
+		case "nullDiff":
+			return "runNullLabelLayer";
+		case "unknown":
+			return "runUnknownLabelLayer";
+		default:
+			return "runEasyLabelLayer";
+	}
+}
+
 export function SkiMap({
 	cameraCenter,
 	is3D,
@@ -60,6 +80,7 @@ export function SkiMap({
 	showIntermediate,
 	showExpert,
 	gpsMode,
+	graphNodesGeoJson,
 }: SkiMapProps) {
 	const {
 		runsEasy,
@@ -142,25 +163,6 @@ export function SkiMap({
 				</MapboxGL.RasterDemSource>
 			)}
 
-			{selectedFeature && (
-				<MapboxGL.ShapeSource
-					id='highlightSource'
-					shape={{
-						type: "FeatureCollection",
-						features: [selectedFeature],
-					}}
-				>
-					<MapboxGL.LineLayer
-						id='highlightLayer'
-						style={{
-							lineColor: "blue",
-							lineWidth: 4,
-							lineOpacity: 1,
-						}}
-					/>
-				</MapboxGL.ShapeSource>
-			)}
-
 			{Array.isArray(routeFeature) &&
 				routeFeature.map((feature: any, index: number) => (
 					<MapboxGL.ShapeSource
@@ -179,6 +181,23 @@ export function SkiMap({
 						/>
 					</MapboxGL.ShapeSource>
 				))}
+			{/* {graphNodesGeoJson && (
+				<MapboxGL.ShapeSource id='graphNodes' shape={graphNodesGeoJson}>
+					<MapboxGL.CircleLayer
+						id='graphNodesLayer'
+						style={{
+							circleRadius: 4,
+							circleColor: [
+								"case",
+								["==", ["get", "intersection"], true],
+								"orange", // couleur des intersections
+								"purple", // couleur des autres nœuds
+							],
+							circleOpacity: 0.9,
+						}}
+					/>
+				</MapboxGL.ShapeSource>
+			)} */}
 
 			<StationsLayers geoJson={stationGeoJson} />
 			<CitiesLabels stationCities={stationCities} />
@@ -202,7 +221,35 @@ export function SkiMap({
 				runsUnknown={runsUnknown}
 				onMapFeaturePress={onMapFeaturePress}
 			/>
-			<RouteLayers routeFeature={routeFeature} />
+
+			<RouteLayers
+				routeFeature={routeFeature}
+				belowLayerID={getLabelLayerId(selectedFeature)}
+			/>
+
+			{selectedFeature && (
+				<MapboxGL.ShapeSource
+					id='highlightSource'
+					shape={
+						(selectedFeature as any).type === "FeatureCollection"
+							? (selectedFeature as any)
+							: {
+									type: "FeatureCollection",
+									features: [selectedFeature],
+							  }
+					}
+				>
+					<MapboxGL.LineLayer
+						id='highlightLayer'
+						belowLayerID={getLabelLayerId(selectedFeature)}
+						style={{
+							lineColor: "blue",
+							lineWidth: 4,
+							lineOpacity: 1,
+						}}
+					/>
+				</MapboxGL.ShapeSource>
+			)}
 
 			{showDestinationPoint && destinationCoord && (
 				<MapboxGL.PointAnnotation

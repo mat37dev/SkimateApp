@@ -4,9 +4,10 @@ import MapStyleConfig from "@/constants/map/mapStyles";
 
 interface Props {
 	routeFeature: any;
+	belowLayerID: string;
 }
 
-export const RouteLayers = ({ routeFeature }: Props) => {
+export const RouteLayers = ({ routeFeature, belowLayerID }: Props) => {
 	if (!routeFeature) return null;
 
 	if (!Array.isArray(routeFeature)) {
@@ -14,6 +15,7 @@ export const RouteLayers = ({ routeFeature }: Props) => {
 			<MapboxGL.ShapeSource id='routeSource' shape={routeFeature}>
 				<MapboxGL.LineLayer
 					id='bridgingLayer'
+					belowLayerID={belowLayerID}
 					filter={["==", ["get", "segmentType"], "bridging"]}
 					style={{
 						lineColor: "green",
@@ -24,6 +26,7 @@ export const RouteLayers = ({ routeFeature }: Props) => {
 				/>
 				<MapboxGL.LineLayer
 					id='normalLayer'
+					belowLayerID={belowLayerID}
 					filter={["!=", ["get", "segmentType"], "bridging"]}
 					style={{
 						lineColor: ["get", "color"],
@@ -45,6 +48,7 @@ export const RouteLayers = ({ routeFeature }: Props) => {
 				>
 					<MapboxGL.LineLayer
 						id={`normalLayer-${index}`}
+						belowLayerID={belowLayerID}
 						style={{
 							lineColor: ["get", "color"],
 							lineWidth: MapStyleConfig.RouteSegmentLineWidth,
@@ -56,4 +60,5 @@ export const RouteLayers = ({ routeFeature }: Props) => {
 		</>
 	);
 };
+
 export default RouteLayers;

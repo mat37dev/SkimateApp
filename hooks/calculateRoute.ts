@@ -2,6 +2,7 @@ let cachedGraph: Graph | null = null;
 
 const MAX_BRIDGE_DISTANCE = 0.004; // Maximum distance (in degrees) to consider two nodes as "close enough" for bridging.
 const BRIDGING_PENALTY = 50500; // Fait varier la tendance à créer des ponts entre les pistes (à augmenter pour diminuer les ponts).
+const MAX_INTERSECTION_DIST = 0.00003; // 5 meters (adjust as needed)
 
 /**
  * Preprocess features so that each feature yields exactly one "edge"
@@ -21,16 +22,13 @@ export function preprocessFeatures(features: any[]) {
 	const runLines: Array<{ coords: [number, number][]; properties: any }> = [];
 	const liftEdges: any[] = [];
 
-	// 1) Sépare runs et lifts
+	// 1) Sépare lifts et runs (tout ce qui n'est pas lift devient run)
 	features.forEach((feature) => {
 		if (feature.geometry.type !== "LineString") return;
 		const coords = feature.geometry.coordinates as [number, number][];
 		if (coords.length < 2) return;
 		const category = feature.category || feature.properties?.category;
-		if (category === "run") {
-			runLines.push({ coords, properties: feature.properties });
-		} else if (category === "lift") {
-			// logique d'origine pour les lifts
+		if (category === "lift") {
 			liftEdges.push({
 				startCoord: coords[0],
 				endCoord: coords[coords.length - 1],
@@ -38,41 +36,42 @@ export function preprocessFeatures(features: any[]) {
 				properties: feature.properties,
 				fullCoordinates: coords,
 			});
+		} else {
+			// on traite tout le reste comme une piste
+			runLines.push({ coords, properties: feature.properties });
 		}
 	});
 
-	// 2) Trouve les intersections *exactes* entre toutes les runs
-	const intersectionPoints: [number, number][] = [];
+	// 2) Intersections mid-run
+	const rawIntersectionPoints: [number, number][] = [];
 	for (let i = 0; i < runLines.length; i++) {
 		for (let j = i + 1; j < runLines.length; j++) {
 			const A = runLines[i].coords;
 			const B = runLines[j].coords;
-			A.forEach((ptA) => {
+			A.forEach((ptA) =>
 				B.forEach((ptB) => {
-					if (areSamePoint(ptA, ptB)) {
-						intersectionPoints.push(ptA);
+					if (distance(ptA, ptB) < MAX_INTERSECTION_DIST) {
+						rawIntersectionPoints.push(ptA);
 					}
-				});
-			});
+				})
+			);
 		}
 	}
-	console.log(`✅ Found ${intersectionPoints.length} exact intersections`);
+	const uniqueIntersections = rawIntersectionPoints.filter(
+		(pt, idx, arr) => arr.findIndex((p) => areSamePoint(p, pt)) === idx
+	);
 
-	// 3) Pour chaque run, scinde-la au niveau des intersections
+	// 3) Découpe les runs sur ces intersections
 	runLines.forEach(({ coords, properties }) => {
-		// on récupère tous les indices où il y a une intersection
 		const cutIndices = new Set<number>();
 		coords.forEach((pt, idx) => {
 			if (
-				intersectionPoints.find((ip) => areSamePoint(ip, pt)) &&
+				uniqueIntersections.find((ip) => areSamePoint(ip, pt)) &&
 				idx > 0 &&
 				idx < coords.length - 1
-			) {
+			)
 				cutIndices.add(idx);
-			}
 		});
-
-		// si pas d'intersection, edge entier
 		if (cutIndices.size === 0) {
 			simplifiedEdges.push({
 				startCoord: coords[0],
@@ -82,22 +81,20 @@ export function preprocessFeatures(features: any[]) {
 				fullCoordinates: coords,
 			});
 		} else {
-			// sinon on découpe en segments successifs
 			let lastCut = 0;
-			const sortedCuts = Array.from(cutIndices).sort((a, b) => a - b);
-			sortedCuts.forEach((cutIdx) => {
-				// segment [lastCut .. cutIdx]
-				const seg = coords.slice(lastCut, cutIdx + 1);
-				simplifiedEdges.push({
-					startCoord: seg[0],
-					endCoord: seg[seg.length - 1],
-					category: "run",
-					properties,
-					fullCoordinates: seg,
+			Array.from(cutIndices)
+				.sort((a, b) => a - b)
+				.forEach((cutIdx) => {
+					const seg = coords.slice(lastCut, cutIdx + 1);
+					simplifiedEdges.push({
+						startCoord: seg[0],
+						endCoord: seg[seg.length - 1],
+						category: "run",
+						properties,
+						fullCoordinates: seg,
+					});
+					lastCut = cutIdx;
 				});
-				lastCut = cutIdx;
-			});
-			// et le dernier segment [dernier cut .. fin]
 			const tail = coords.slice(lastCut);
 			if (tail.length > 1) {
 				simplifiedEdges.push({
@@ -111,33 +108,34 @@ export function preprocessFeatures(features: any[]) {
 		}
 	});
 
-	// 4) Ajoute les lifts inchangés
+	// 4) Conserve les lifts
 	simplifiedEdges.push(...liftEdges);
-
-	return simplifiedEdges;
+	console.log("Intersections nodes found:", uniqueIntersections.length);
+	return { simplifiedEdges, intersectionPoints: uniqueIntersections };
 }
 
 /**
  * A simple Graph class.
  */
 class Graph {
-	nodes: { [key: string]: [number, number] } = {};
+	nodes: { [id: string]: [number, number] } = {};
 	adjacencyList: {
-		[key: string]: Array<{ node: string; weight: number; data: any }>;
+		[id: string]: Array<{ node: string; weight: number; data: any }>;
 	} = {};
+	terminals = new Set<string>();
 
-	addNode(nodeId: string, coord: [number, number]) {
-		if (!this.nodes[nodeId]) {
-			this.nodes[nodeId] = coord;
-			this.adjacencyList[nodeId] = [];
+	addNode(id: string, coord: [number, number]): string {
+		for (const k in this.nodes) {
+			if (distance(this.nodes[k], coord) < MAX_INTERSECTION_DIST)
+				return k;
 		}
+		this.nodes[id] = coord;
+		this.adjacencyList[id] = [];
+		return id;
 	}
 
-	addEdge(nodeId1: string, nodeId2: string, weight: number, data: any) {
-		if (!this.adjacencyList[nodeId1]) {
-			this.adjacencyList[nodeId1] = [];
-		}
-		this.adjacencyList[nodeId1].push({ node: nodeId2, weight, data });
+	addEdge(a: string, b: string, w: number, data: any) {
+		this.adjacencyList[a].push({ node: b, weight: w, data });
 	}
 }
 
@@ -157,57 +155,74 @@ function distance(coordA: [number, number], coordB: [number, number]) {
  * - Runs: from top (start) to bottom (end)
  * - Lifts: from bottom (start) to top (end)
  */
-export function buildGraph(simplifiedEdges: any[]) {
-	console.log("Building graph from simplified edges...");
-	const graph = new Graph();
+export function buildGraph(edges: any[]) {
+	const g = new Graph();
 
-	// 1. Add nodes and directional edges for runs/lifts.
-	simplifiedEdges.forEach((edge) => {
-		const startId = edge.startCoord.join(",");
-		const endId = edge.endCoord.join(",");
-		graph.addNode(startId, edge.startCoord);
-		graph.addNode(endId, edge.endCoord);
-
-		const w = distance(edge.startCoord, edge.endCoord);
-		const edgeData = {
+	// 1. On n’ajoute ici QUE les arêtes run/lift, pas de ponts.
+	edges.forEach((e) => {
+		const a = g.addNode(e.startCoord.join(","), e.startCoord);
+		const b = g.addNode(e.endCoord.join(","), e.endCoord);
+		g.terminals.add(a);
+		g.terminals.add(b);
+		const w = distance(e.startCoord, e.endCoord);
+		g.addEdge(a, b, w, {
 			bridging: false,
-			category: edge.category,
-			properties: edge.properties,
-			fullCoordinates: edge.fullCoordinates,
-		};
-
-		// For runs and lifts, add only one directional edge.
-		if (edge.category === "run" || edge.category === "lift") {
-			graph.addEdge(startId, endId, w, edgeData);
-		} else {
-			// Fallback: add bidirectional edges.
-			graph.addEdge(startId, endId, w, edgeData);
-			graph.addEdge(endId, startId, w, edgeData);
-		}
+			category: e.category,
+			properties: e.properties,
+			fullCoordinates: e.fullCoordinates,
+		});
 	});
 
-	// 2. Add bridging edges between nodes that are within MAX_BRIDGE_DISTANCE.
-	const allNodeIds = Object.keys(graph.nodes);
-	for (let i = 0; i < allNodeIds.length; i++) {
-		for (let j = i + 1; j < allNodeIds.length; j++) {
-			const nodeIdA = allNodeIds[i];
-			const nodeIdB = allNodeIds[j];
-			const coordA = graph.nodes[nodeIdA];
-			const coordB = graph.nodes[nodeIdB];
-			const d = distance(coordA, coordB);
-			const bridgingWeight = d + BRIDGING_PENALTY;
+	return g;
+}
 
-			if (d < MAX_BRIDGE_DISTANCE) {
-				const bridgingData = { bridging: true };
-				// Bridging edges are bidirectional.
-				graph.addEdge(nodeIdA, nodeIdB, bridgingWeight, bridgingData);
-				graph.addEdge(nodeIdB, nodeIdA, bridgingWeight, bridgingData);
+//Fonction pour obtenir les nœuds du graphe sous forme de GeoJSON.
+// Utilisée pour afficher les nœuds sur la carte.
+export function getGraphNodesAsGeoJSON(
+	graph: Graph,
+	intersectionPoints: [number, number][]
+) {
+	return {
+		type: "FeatureCollection",
+		features: Object.entries(graph.nodes).map(([id, coord]) => {
+			const isIntersection = intersectionPoints.some(
+				(pt) => distance(pt, coord) < 1e-8
+			);
+			return {
+				type: "Feature",
+				properties: {
+					id,
+					intersection: isIntersection,
+				},
+				geometry: {
+					type: "Point",
+					coordinates: coord,
+				},
+			};
+		}),
+	};
+}
+function computeComponents(graph: Graph): Record<string, number> {
+	const comp: Record<string, number> = {};
+	let cid = 0;
+
+	for (const node of Object.keys(graph.nodes)) {
+		if (comp[node] != null) continue;
+		// BFS ou DFS
+		const stack = [node];
+		while (stack.length) {
+			const u = stack.pop()!;
+			if (comp[u] != null) continue;
+			comp[u] = cid;
+			for (const { node: v, data } of graph.adjacencyList[u]) {
+				if (!data.bridging && comp[v] == null) {
+					stack.push(v);
+				}
 			}
 		}
+		cid++;
 	}
-
-	console.log(`Graph built: ${Object.keys(graph.nodes).length} nodes`);
-	return graph;
+	return comp;
 }
 
 // Helper to compute the bearing (in degrees) from coord1 to coord2.
@@ -244,17 +259,41 @@ export function getGraph(simplifiedEdges: any[]) {
 /**
  * Find the closest node in the graph to the target coordinate.
  */
-export function findClosestNode(graph: Graph, targetCoord: [number, number]) {
-	let closestId: string | null = null;
-	let minDist = Infinity;
+// Avant : on ne regardait que graph.terminals
+// Maintenant : on parcourt tous les nœuds
+export function findClosestNode(graph: Graph, target: [number, number]) {
+	let best: string | null = null,
+		bestDist = Infinity;
 	for (const nodeId in graph.nodes) {
-		const d = distance(graph.nodes[nodeId], targetCoord);
-		if (d < minDist) {
-			minDist = d;
-			closestId = nodeId;
+		const d = distance(graph.nodes[nodeId], target);
+		if (d < bestDist) {
+			bestDist = d;
+			best = nodeId;
 		}
 	}
-	return closestId;
+	return best!;
+}
+export function buildGraphWithBridges(edges: any[]) {
+	const g = buildGraph(edges); // graph ski-only
+	const comp = computeComponents(g);
+	const ids = Object.keys(g.nodes);
+
+	for (let i = 0; i < ids.length; i++) {
+		for (let j = i + 1; j < ids.length; j++) {
+			const u = ids[i],
+				v = ids[j];
+			// seulement si pas déjà dans la même composante skiable
+			if (comp[u] === comp[v]) continue;
+			const d = distance(g.nodes[u], g.nodes[v]);
+			if (d < MAX_BRIDGE_DISTANCE) {
+				const w = d + BRIDGING_PENALTY;
+				g.addEdge(u, v, w, { bridging: true });
+				g.addEdge(v, u, w, { bridging: true });
+			}
+		}
+	}
+
+	return g;
 }
 
 /**
@@ -265,60 +304,53 @@ export function computeShortestPath(
 	startNodeId: string,
 	endNodeId: string
 ) {
-	console.log(`Computing shortest path from ${startNodeId} to ${endNodeId}`);
-	const distances: { [key: string]: number } = {};
-	const previous: { [key: string]: string | null } = {};
-	const unvisited = new Set<string>();
+	function runDijkstra(allowBridge: boolean) {
+		const distances: { [key: string]: number } = {};
+		const previous: { [key: string]: string | null } = {};
+		const unvisited = new Set<string>();
 
-	for (const nodeId in graph.nodes) {
-		distances[nodeId] = Infinity;
-		previous[nodeId] = null;
-		unvisited.add(nodeId);
-	}
-	distances[startNodeId] = 0;
+		for (const nodeId in graph.nodes) {
+			distances[nodeId] = Infinity;
+			previous[nodeId] = null;
+			unvisited.add(nodeId);
+		}
+		distances[startNodeId] = 0;
 
-	while (unvisited.size > 0) {
-		let current: string | null = null;
-		for (let nodeId of unvisited) {
-			if (current === null || distances[nodeId] < distances[current]) {
-				current = nodeId;
+		while (unvisited.size > 0) {
+			let current: string | null = null;
+			for (const nodeId of unvisited) {
+				if (
+					current === null ||
+					distances[nodeId] < distances[current]
+				) {
+					current = nodeId;
+				}
+			}
+			if (current === null || distances[current] === Infinity) break;
+			if (current === endNodeId) break;
+			unvisited.delete(current);
+			for (const edge of graph.adjacencyList[current] || []) {
+				if (!allowBridge && edge.data.bridging) continue;
+				const alt = distances[current] + edge.weight;
+				if (alt < distances[edge.node]) {
+					distances[edge.node] = alt;
+					previous[edge.node] = current;
+				}
 			}
 		}
-		if (current === null || distances[current] === Infinity) {
-			console.log(
-				`No more reachable nodes. Current node ${current} has distance Infinity.`
-			);
-			break;
+
+		const path: string[] = [];
+		let u: string | null = endNodeId;
+		while (u) {
+			path.unshift(u);
+			u = previous[u];
 		}
-		if (current === endNodeId) {
-			console.log(
-				`Reached destination ${endNodeId} with distance ${distances[current]}`
-			);
-			break;
-		}
-		unvisited.delete(current);
-		const neighbors = graph.adjacencyList[current] || [];
-		neighbors.forEach((edge) => {
-			const alt = distances[current] + edge.weight;
-			if (alt < distances[edge.node]) {
-				distances[edge.node] = alt;
-				previous[edge.node] = current;
-			}
-		});
+		return path[0] === startNodeId ? path : [];
 	}
 
-	const path: string[] = [];
-	let cur: string | null = endNodeId;
-	while (cur !== null) {
-		path.unshift(cur);
-		cur = previous[cur];
-	}
-	if (path[0] !== startNodeId) {
-		console.error("No path found. Final path:", path);
-		return [];
-	}
-	console.log(`Path found: ${path.join(" -> ")}`);
-	return path;
+	let path = runDijkstra(false);
+	if (path.length) return path;
+	return runDijkstra(true);
 }
 
 /**
@@ -486,16 +518,16 @@ export function calculateRouteForFeature(
 		: combinedList;
 
 	// Preprocess the (filtered) combined list.
-	const simplifiedEdges = preprocessFeatures(filteredCombinedList);
+	const { simplifiedEdges, intersectionPoints } =
+		preprocessFeatures(filteredCombinedList);
 	if (simplifiedEdges.length === 0) {
 		console.error("No simplified edges available.");
 		return null;
 	}
-	// Build the graph:
-	// If allowedFilters is provided, always rebuild the graph
 	const graph = !allowedFilters
 		? buildGraph(simplifiedEdges)
 		: getGraph(simplifiedEdges);
+
 	if (!graph) {
 		console.error("Graph could not be built.");
 		return null;

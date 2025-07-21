@@ -19,6 +19,7 @@ import MapStyleConfig from "@/constants/map/mapStyles";
 import {
 	calculateRouteForFeature,
 	getGraph,
+	getGraphNodesAsGeoJSON,
 	preprocessFeatures,
 } from "@/hooks/calculateRoute";
 import { CollapsibleRouteSheet } from "@/components/Modals/CollapsibleRouteSheet";
@@ -48,7 +49,8 @@ export default function map() {
 	const [routeFeature, setRouteFeature] = useState<any>(null);
 	const [mapReady, setMapReady] = useState(false);
 
-	// Data fetching hooks
+	// 1rst data fetching
+	// This hook fetches the list of stations and their basic data
 	const {
 		stations,
 		dropdownItems,
@@ -56,12 +58,16 @@ export default function map() {
 		setSelectedStation,
 		isLoading: stationsLoading,
 	} = useStations();
+
+	// 2nd data fetching for station-specific data
+	// This hook fetches station data, coordinates, and assets
 	const {
 		stationCities,
 		stationCoordinates,
 		assets,
 		isLoading: stationDataLoading,
 	} = useStationData(selectedStation);
+
 	const loading = stationsLoading || stationDataLoading || !mapReady;
 
 	// Extract search/filter & graph logic from useSkiMap hook
@@ -161,25 +167,35 @@ export default function map() {
 	}
 
 	const handleFeatureSelect = (feature: any) => {
+		console.log("handleFeatureSelect called with feature:", feature);
 		setSearchModalVisible(false);
 
-		const fullFeature = combinedList.find(
-			(item) => String(item.id) === String(feature.id)
-		);
-		const selected = fullFeature || feature;
+		// 1) on récupère la run complète si possible
+		// 1) on récupère la run complète en cherchant d'abord par nom, puis par id
+		const fullRun = combinedList.find((item) => item.id === feature.id);
 
-		const targetCoord =
-			selected.geometry.type === "LineString"
-				? selected.geometry.coordinates[
-						Math.floor(selected.geometry.coordinates.length / 2)
-				  ]
-				: selected.geometry.coordinates;
+		console.log("Full run found:", fullRun);
+		const highlightGeom = fullRun || feature;
 
-		console.log("target coord:", targetCoord);
+		// 2) on calcule la coordonnée pour zoomer sur le segment cliqué
+		let targetCoord: number[] | null = null;
+		if (feature.geometry.type === "LineString") {
+			const coords = feature.geometry.coordinates;
+			targetCoord = coords[Math.floor(coords.length / 2)];
+		} else if (feature.geometry.type === "Point") {
+			targetCoord = feature.geometry.coordinates;
+		} else {
+			return;
+		}
 
-		setSelectedFeature(selected);
-		setCameraToCoordinates(mapCameraRef, targetCoord);
+		// 3) on surligne la géométrie complète (run entière ou route)
+		setSelectedFeature(highlightGeom);
 		setRouteFeature(null);
+
+		// 4) on centre la caméra sur le segment cliqué
+		if (mapCameraRef.current && targetCoord) {
+			setCameraToCoordinates(mapCameraRef, targetCoord);
+		}
 		setInfoModalVisible(true);
 	};
 
@@ -194,13 +210,20 @@ export default function map() {
 	};
 
 	// Build the graph from combinedList (hook already preprocessed this)
-	const simplifiedEdges = useMemo(
+	const { simplifiedEdges, intersectionPoints } = useMemo(
 		() => preprocessFeatures(combinedList),
 		[combinedList]
 	);
 	const memoizedGraph = useMemo(
 		() => (simplifiedEdges.length > 0 ? getGraph(simplifiedEdges) : null),
 		[simplifiedEdges]
+	);
+	const graphNodesGeoJson = useMemo(
+		() =>
+			memoizedGraph
+				? getGraphNodesAsGeoJSON(memoizedGraph, intersectionPoints)
+				: null,
+		[memoizedGraph, intersectionPoints]
 	);
 
 	function onCalculateRoute(direction: "top" | "bottom") {
@@ -325,6 +348,7 @@ export default function map() {
 			</View>
 			{/* SkiMap Component with filter props */}
 			<SkiMap
+				graphNodesGeoJson={graphNodesGeoJson}
 				cameraCenter={cameraCenter}
 				is3D={is3D}
 				onMapLoad={() => {

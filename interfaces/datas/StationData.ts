@@ -59,8 +59,19 @@ export interface UseStationDataResult {
 export interface Station {
 	osmId: string;
 	name: string;
-	longitude: number;
+	logo: string;
+	domain: string;
+	website: string;
+	emergencyPhone: string;
+	altitudeMin: number;
+	altitudeMax: number;
 	latitude: number;
+	longitude: number;
+	distanceSlope: number;
+	countEasy: number;
+	countIntermediate: number;
+	countAdvanced: number;
+	countExpert: number;
 }
 
 export interface UseStationsResult {

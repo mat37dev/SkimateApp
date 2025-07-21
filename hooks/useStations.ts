@@ -1,7 +1,6 @@
-// hooks/useStations.ts
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchStations, fetchStationsData } from "@/api/skiApi";
+import { fetchStations } from "@/api/skiApi";
 import { Station, UseStationsResult } from "@/interfaces/datas/StationData";
 
 export const useStations = (): UseStationsResult => {
@@ -15,90 +14,62 @@ export const useStations = (): UseStationsResult => {
 	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
-	const hasFetchedStations = useRef(false);
-	const hasFetchedStationData = useRef(false);
+	const hasFetched = useRef(false);
 
 	useEffect(() => {
 		const getStations = async () => {
-			if (hasFetchedStations.current || isFetching.current) return;
+			if (hasFetched.current || isFetching.current) return;
 			isFetching.current = true;
-
+			let cachedData: Station[] = [];
 			try {
-				const cachedStations = await AsyncStorage.getItem(
-					"skiStations"
-				);
-				if (cachedStations) {
-					const stationsData: Station[] = JSON.parse(cachedStations);
-					setStations(stationsData);
+				console.warn("looking for cached stations...");
+				const cached = await AsyncStorage.getItem("skiStationsData");
+				if (cached) {
+					console.warn("✅ Found cached station data.");
+					cachedData = JSON.parse(cached) as Station[];
+					setStations(cachedData);
 					setDropdownItems(
-						stationsData.map((s) => ({
+						cachedData.map((s) => ({
 							label: s.name,
 							value: s.osmId,
 						}))
 					);
-					// Set the first station as selected
-					if (stationsData.length > 0) {
-						setSelectedStation(stationsData[0]);
-					}
-					// Optionally, if you want to fetch station-specific data once:
-					if (!hasFetchedStationData.current) {
-						hasFetchedStationData.current = true;
-						// Here you might trigger a callback or set state in another hook
-					}
-					return;
-				}
-
-				// No cache available, so fetch from API
-				const response = await fetchStations();
-				if (response && response.length > 0) {
-					// Optionally, you could enhance each station with additional data:
-					const stationsWithCoords: Station[] = await Promise.all(
-						response.map(
-							async (station: Station, index: number) => {
-								// Fetch additional station data (like coordinates)
-								const stationData = await fetchStationsData(
-									station
-								);
-								return {
-									...station,
-									longitude:
-										stationData?.longitude ||
-										(index === 0 ? 6.681 : 6.82),
-									latitude:
-										stationData?.latitude ||
-										(index === 0 ? 45.512 : 45.563),
-								};
-							}
-						)
-					);
-
+					setSelectedStation(cachedData[0] || null);
+				} else {
+					console.warn("❌ No cached stations data found.");
+					const result = await fetchStations();
+					cachedData = result;
 					await AsyncStorage.setItem(
-						"skiStations",
-						JSON.stringify(stationsWithCoords)
+						"skiStationsData",
+						JSON.stringify(result)
 					);
-					setStations(stationsWithCoords);
+					setStations(result);
 					setDropdownItems(
-						stationsWithCoords.map((s) => ({
-							label: s.name,
-							value: s.osmId,
-						}))
+						result.map((s) => ({ label: s.name, value: s.osmId }))
 					);
-					if (stationsWithCoords.length > 0) {
-						setSelectedStation(stationsWithCoords[0]);
-					}
+					setSelectedStation(result[0] || null);
 				}
-			} catch (error) {
-				console.error("Error fetching stations:", error);
+			} catch (error: any) {
+				console.error("❌ fetchStations failed:", error.message);
+				if (cachedData.length === 0) {
+					setStations([]);
+					setDropdownItems([]);
+					setSelectedStation(null);
+				}
 			} finally {
-				hasFetchedStations.current = true;
+				hasFetched.current = true;
 				isFetching.current = false;
 				setIsLoading(false);
-				console.log("Station Infos retrieved !");
 			}
 		};
 
 		getStations();
 	}, []);
+	useEffect(() => {
+		if (stations[0]) {
+			console.log("useStations[0]:", stations[0]);
+		}
+	}, [stations[0]]);
 
 	return {
 		stations,

@@ -1,21 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchStationsData, fetchStationCoordinates } from "@/api/skiApi";
+import { fetchStationCoordinates } from "@/api/skiApi";
 import {
-	CityFeature,
 	StationAssets,
 	StationCoordinates,
-	StationData,
 	UseStationDataResult,
+	Station,
 } from "@/interfaces/datas/StationData";
 import type { FeatureCollection, Point } from "geojson";
 
 export const useStationData = (
-	station: { osmId: string; name: string } | null
+	station: Station | null
 ): UseStationDataResult & {
 	stationCities: FeatureCollection<Point, { name: string }> | null;
 } => {
-	const [stationData, setStationData] = useState<StationData | null>(null);
+	const [stationData, setStationData] = useState<Station | null>(null);
+	const [stationGeoJson, setStationGeoJson] = useState<FeatureCollection<
+		Point,
+		any
+	> | null>(null);
 	const [stationCoordinates, setStationCoordinates] =
 		useState<StationCoordinates | null>(null);
 	const [assets, setAssets] = useState<StationAssets | null>(null);
@@ -26,114 +29,124 @@ export const useStationData = (
 	const [isLoading, setIsLoading] = useState(true);
 
 	const isFetching = useRef(false);
+	const emptyFC: FeatureCollection = {
+		type: "FeatureCollection",
+		features: [],
+	};
+
+	// Ajoute des IDs basés sur properties.osmId ou index si absent
+	const injectUniqueId = <T extends FeatureCollection<any, any>>(fc: T): T =>
+		({
+			...fc,
+			features: fc.features.map((feature, idx) => {
+				const {
+					category,
+					difficulty = "none",
+					name = "",
+				} = feature.properties || {};
+				// Construit un id unique : catégorie–osmId–difficulty
+				const osmId = String(
+					feature.properties?.osmId ?? feature.id ?? idx
+				);
+				const uniqueId = `${category}-${osmId}-${difficulty}`;
+				return {
+					...feature,
+					id: uniqueId,
+					properties: {
+						...feature.properties,
+						osmId,
+					},
+				};
+			}),
+		} as T);
 
 	useEffect(() => {
+		if (!station || isFetching.current) return;
 		const getStationData = async () => {
-			if (!station || isFetching.current) return;
 			isFetching.current = true;
 
-			try {
-				const dataKey = `stationData-${station.osmId}`;
-				const delimKey = `stationsDelimitations-${station.osmId}`;
-				const runsKey = `stationRuns-${station.osmId}`;
-				const liftsKey = `stationLifts-${station.osmId}`;
-				const citiesKey = `stationCities-${station.osmId}`;
+			const geoKey = `stationGeoJson-${station.osmId}`;
+			const delimKey = `stationsDelimitations-${station.osmId}`;
+			const runsKey = `stationRuns-${station.osmId}`;
+			const liftsKey = `stationLifts-${station.osmId}`;
+			const citiesKey = `stationCities-${station.osmId}`;
 
-				const [sDataJSON, sDelimJSON, runsJSON, liftsJSON, citiesJSON] =
+			try {
+				const [geoJSON, delimJSON, runsJSON, liftsJSON, citiesJSON] =
 					await Promise.all([
-						AsyncStorage.getItem(dataKey),
+						AsyncStorage.getItem(geoKey),
 						AsyncStorage.getItem(delimKey),
 						AsyncStorage.getItem(runsKey),
 						AsyncStorage.getItem(liftsKey),
 						AsyncStorage.getItem(citiesKey),
 					]);
 
-				let storedStationData: StationData;
+				let storedGeo: FeatureCollection<Point, any>;
 				let storedDelimitations: StationCoordinates;
-				let runs: any;
-				let lifts: any;
+				let rawRuns: any;
+				let rawLifts: any;
 				let citiesGeoJson: FeatureCollection<Point, { name: string }>;
 
-				const cacheHit =
-					sDataJSON &&
-					sDelimJSON &&
+				if (
+					geoJSON &&
+					delimJSON &&
 					runsJSON &&
 					liftsJSON &&
-					citiesJSON;
-
-				if (cacheHit) {
-					storedStationData = JSON.parse(sDataJSON!);
-					storedDelimitations = JSON.parse(sDelimJSON!);
-					runs = JSON.parse(runsJSON!);
-					lifts = JSON.parse(liftsJSON!);
-					citiesGeoJson = JSON.parse(citiesJSON!);
+					citiesJSON
+				) {
+					storedGeo = injectUniqueId(JSON.parse(geoJSON));
+					storedDelimitations = JSON.parse(delimJSON);
+					rawRuns = JSON.parse(runsJSON);
+					rawLifts = JSON.parse(liftsJSON);
+					citiesGeoJson = JSON.parse(citiesJSON);
 				} else {
-					storedStationData = await fetchStationsData(station);
-					if (!storedStationData) return;
-
 					const fetched = await fetchStationCoordinates(
-						storedStationData.domain,
+						station.domain,
 						station.osmId
 					);
-					if (!fetched || !fetched.stationsDelimitations?.features)
-						return;
+					if (!fetched) return;
 
+					storedGeo = injectUniqueId(fetched.stationGeoJson);
 					storedDelimitations = fetched.stationsDelimitations;
-					runs = fetched.runs || {};
-					lifts = fetched.lifts || {};
-
-					let idCounter = 0;
-					const injectIds = (fc: any) => ({
-						...fc,
-						features: fc.features.map((f: any) => ({
-							...f,
-							id: idCounter++,
-						})),
-					});
-
-					runs = {
-						easy: injectIds(runs.easy || { features: [] }),
-						novice: injectIds(runs.novice || { features: [] }),
-						intermediate: injectIds(
-							runs.intermediate || { features: [] }
-						),
-						expert: injectIds(runs.expert || { features: [] }),
-						nullDiff: injectIds(runs.nullDiff || { features: [] }),
-						unknown: injectIds(runs.unknown || { features: [] }),
-					};
-
-					lifts = {
-						liftLines: injectIds(
-							lifts.liftLines || { features: [] }
-						),
-						liftStartPoints: injectIds(
-							lifts.liftStartPoints || { features: [] }
-						),
-					};
-
+					const runsFc = fetched.runs || {};
+					const liftsFc = fetched.lifts || {};
 					citiesGeoJson = fetched.allCities;
 
-					await AsyncStorage.setItem(
-						dataKey,
-						JSON.stringify(storedStationData)
-					);
-					await AsyncStorage.setItem(
-						delimKey,
-						JSON.stringify(storedDelimitations)
-					);
-					await AsyncStorage.setItem(runsKey, JSON.stringify(runs));
-					await AsyncStorage.setItem(liftsKey, JSON.stringify(lifts));
-					if (citiesGeoJson) {
-						await AsyncStorage.setItem(
-							citiesKey,
-							JSON.stringify(citiesGeoJson)
-						);
-					}
+					// après fetch ou lecture du cache
+					const runsWithIds = {
+						easy: injectUniqueId(runsFc.easy ?? emptyFC),
+						novice: injectUniqueId(runsFc.novice ?? emptyFC),
+						intermediate: injectUniqueId(
+							runsFc.intermediate ?? emptyFC
+						),
+						expert: injectUniqueId(runsFc.expert ?? emptyFC),
+						nullDiff: injectUniqueId(runsFc.nullDiff ?? emptyFC),
+						unknown: injectUniqueId(runsFc.unknown ?? emptyFC),
+					};
+					const liftsWithIds = {
+						liftLines: injectUniqueId(liftsFc.liftLines ?? emptyFC),
+						liftStartPoints: injectUniqueId(
+							liftsFc.liftStartPoints ?? emptyFC
+						),
+					};
+					setAssets({ runs: runsWithIds, lifts: liftsWithIds });
+
+					rawRuns = runsWithIds;
+					rawLifts = liftsWithIds;
+
+					await AsyncStorage.multiSet([
+						[geoKey, JSON.stringify(storedGeo)],
+						[delimKey, JSON.stringify(storedDelimitations)],
+						[runsKey, JSON.stringify(rawRuns)],
+						[liftsKey, JSON.stringify(rawLifts)],
+						[citiesKey, JSON.stringify(citiesGeoJson)],
+					]);
 				}
 
-				setStationData(storedStationData);
+				setStationData(station);
+				setStationGeoJson(storedGeo);
 				setStationCoordinates(storedDelimitations);
-				setAssets({ runs, lifts });
+				setAssets({ runs: rawRuns, lifts: rawLifts });
 				setStationCities(citiesGeoJson);
 			} catch (error) {
 				console.error("Error in useStationData:", error);
@@ -148,6 +161,7 @@ export const useStationData = (
 
 	return {
 		stationData,
+		stationGeoJson,
 		stationCoordinates,
 		assets,
 		stationCities,
