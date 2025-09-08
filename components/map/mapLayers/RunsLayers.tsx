@@ -52,33 +52,6 @@ export const RunsLayers = ({
 				shape={shapeData}
 				onPress={onMapFeaturePress}
 			>
-				<MapboxGL.LineLayer
-					id={lineId}
-					style={{
-						lineColor: color,
-						lineWidth: MapStyleConfig.RunLineWidth,
-						lineOpacity: MapStyleConfig.RunLineOpacity,
-					}}
-				/>
-				<MapboxGL.SymbolLayer
-					id={labelId}
-					minZoomLevel={MapStyleConfig.RunLabelTextDistanceApparition}
-					style={{
-						textField: ["get", "name"],
-						symbolPlacement: MapStyleConfig.RunLabelSymbolPlacement,
-						textSize: MapStyleConfig.RunLabelFontSize,
-						textColor: color,
-						textHaloWidth: MapStyleConfig.RunLabelHaloWidth,
-						textHaloColor: MapStyleConfig.RunLabelHaloColor,
-						textOpacity: MapStyleConfig.RunLabelTextOpacity,
-						textFont: [
-							MapStyleConfig.RunLabelTextFont || "Open Sans Bold",
-						],
-						textAllowOverlap: MapStyleConfig.RunLabelAllowOverlap,
-						textIgnorePlacement:
-							MapStyleConfig.RunLabelTextIgnorePlacement,
-					}}
-				/>
 				{hasArrow && (
 					<MapboxGL.SymbolLayer
 						id={arrowId}
@@ -102,6 +75,34 @@ export const RunsLayers = ({
 						}}
 					/>
 				)}
+				<MapboxGL.LineLayer
+					id={lineId}
+					style={{
+						lineColor: color,
+						lineWidth: MapStyleConfig.RunLineWidth,
+						lineOpacity: MapStyleConfig.RunLineOpacity,
+					}}
+				/>
+
+				<MapboxGL.SymbolLayer
+					id={labelId}
+					minZoomLevel={MapStyleConfig.RunLabelTextDistanceApparition}
+					style={{
+						textField: ["get", "name"],
+						symbolPlacement: MapStyleConfig.RunLabelSymbolPlacement,
+						textSize: MapStyleConfig.RunLabelFontSize,
+						textColor: color,
+						textHaloWidth: MapStyleConfig.RunLabelHaloWidth,
+						textHaloColor: MapStyleConfig.RunLabelHaloColor,
+						textOpacity: MapStyleConfig.RunLabelTextOpacity,
+						textFont: [
+							MapStyleConfig.RunLabelTextFont || "Open Sans Bold",
+						],
+						textAllowOverlap: MapStyleConfig.RunLabelAllowOverlap,
+						textIgnorePlacement:
+							MapStyleConfig.RunLabelTextIgnorePlacement,
+					}}
+				/>
 			</MapboxGL.ShapeSource>
 		);
 	};

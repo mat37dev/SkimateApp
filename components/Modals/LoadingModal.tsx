@@ -20,7 +20,6 @@ export const LoadingModal = ({ visible, onClose }: LoadingModalProps) => {
 
 const styles = StyleSheet.create({
 	loadingModalContainer: {
-		flex: 1,
 		padding: 10,
 		backgroundColor: "#fff",
 		justifyContent: "center",

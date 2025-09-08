@@ -25,29 +25,38 @@ export const FilterModal = ({
 	return (
 		<AppModal visible={visible} onClose={onClose}>
 			<ScrollView>
-				<Text style={styles.modalTitle}>Filters</Text>
+				<Text style={styles.modalTitle}>Filtres</Text>
 				<View style={styles.checkboxRow}>
 					<Checkbox value={showLifts} onValueChange={setShowLifts} />
-					<Text>Show Lifts</Text>
+					<Text>Afficher les remontées</Text>
 				</View>
 				<View style={styles.checkboxRow}>
 					<Checkbox value={showRuns} onValueChange={setShowRuns} />
-					<Text>Show Runs</Text>
+					<Text>Afficher les pistes</Text>
 				</View>
 				<View style={styles.checkboxRow}>
-					<Checkbox value={showNovice} onValueChange={setShowNovice} />
-					<Text>Novice</Text>
+					<Checkbox
+						value={showNovice}
+						onValueChange={setShowNovice}
+					/>
+					<Text>Débutant</Text>
 				</View>
 				<View style={styles.checkboxRow}>
 					<Checkbox value={showEasy} onValueChange={setShowEasy} />
-					<Text>Easy</Text>
+					<Text>Facile</Text>
 				</View>
 				<View style={styles.checkboxRow}>
-					<Checkbox value={showIntermediate} onValueChange={setShowIntermediate} />
-					<Text>Intermediate</Text>
+					<Checkbox
+						value={showIntermediate}
+						onValueChange={setShowIntermediate}
+					/>
+					<Text>Intermédiaire</Text>
 				</View>
 				<View style={styles.checkboxRow}>
-					<Checkbox value={showExpert} onValueChange={setShowExpert} />
+					<Checkbox
+						value={showExpert}
+						onValueChange={setShowExpert}
+					/>
 					<Text>Expert</Text>
 				</View>
 			</ScrollView>

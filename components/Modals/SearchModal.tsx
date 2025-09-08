@@ -1,9 +1,18 @@
 // components/Modals/SearchModal.tsx
 import React from "react";
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, StyleSheet } from "react-native";
+import {
+	View,
+	Text,
+	TouchableOpacity,
+	TextInput,
+	ActivityIndicator,
+	ScrollView,
+	StyleSheet,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AppModal } from "@/components/AppModal";
 import { SearchModalProps } from "@/interfaces/logic/SearchModal";
+import { tr } from "@/constants/translations";
 
 export const SearchModal = ({
 	visible,
@@ -33,19 +42,32 @@ export const SearchModal = ({
 						<ActivityIndicator size='small' color='#000' />
 					</View>
 				)}
-				{!isSearching && searchResults.length === 0 && searchQuery !== "" && (
-					<View style={styles.centered}>
-						<Text>No results found</Text>
-					</View>
-				)}
+				{!isSearching &&
+					searchResults.length === 0 &&
+					searchQuery !== "" && (
+						<View style={styles.centered}>
+							<Text>Aucun résultat trouvé</Text>
+						</View>
+					)}
 				<ScrollView style={styles.resultsContainer}>
-					{searchResults.map((item, idx) => (
-						<TouchableOpacity key={idx} style={styles.resultItem} onPress={() => onSearchItemPress(item)}>
-							<Text>
-								{item.properties?.name} ({item.category})
-							</Text>
-						</TouchableOpacity>
-					))}
+					{searchResults.map((item, idx) => {
+						const featureTranslated = tr(
+							item.category,
+							"featureTranslation"
+						);
+						return (
+							<TouchableOpacity
+								key={idx}
+								style={styles.resultItem}
+								onPress={() => onSearchItemPress(item)}
+							>
+								<Text>
+									{item.properties?.name} ({featureTranslated}
+									)
+								</Text>
+							</TouchableOpacity>
+						);
+					})}
 				</ScrollView>
 			</View>
 		</AppModal>
@@ -54,7 +76,7 @@ export const SearchModal = ({
 
 const styles = StyleSheet.create({
 	searchModalContainer: {
-		flex: 1, // take full height
+		height: "100%",
 		padding: 10,
 		backgroundColor: "#fff", // adjust as needed
 	},
@@ -74,9 +96,6 @@ const styles = StyleSheet.create({
 	centered: {
 		padding: 10,
 		alignItems: "center",
-	},
-	resultsContainer: {
-		flex: 1,
 	},
 	resultItem: {
 		marginVertical: 8,

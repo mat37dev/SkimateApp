@@ -1,3 +1,4 @@
+// AppModal.tsx
 import React from "react";
 import { Modal, Pressable, View } from "react-native";
 import styles from "@/styles/mapStyles";
@@ -18,10 +19,7 @@ export const AppModal = ({ visible, onClose, children }: AppModalProps) => {
 		>
 			<Pressable style={styles.modalOverlay} onPress={onClose}>
 				<View style={styles.modalContainer}>
-					<Pressable
-						onPress={(e) => e.stopPropagation()}
-						style={{ flex: 1 }}
-					>
+					<Pressable onPress={(e) => e.stopPropagation()}>
 						{children}
 					</Pressable>
 				</View>

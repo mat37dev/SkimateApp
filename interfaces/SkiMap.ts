@@ -28,5 +28,4 @@ export interface SkiMapProps {
 	destinationCoord: [number, number] | null;
 	stationCities?: FeatureCollection<Point, { name: string }>;
 	showDestinationPoint: boolean;
-	gpsMode?: boolean; // new optional prop
 }

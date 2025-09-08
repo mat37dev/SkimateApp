@@ -20,42 +20,50 @@ export const useStations = (): UseStationsResult => {
 		const getStations = async () => {
 			if (hasFetched.current || isFetching.current) return;
 			isFetching.current = true;
-			let cachedData: Station[] = [];
+
+			let cachedList: Station[] = [];
 			try {
-				console.warn("looking for cached stations...");
+				const savedId = await AsyncStorage.getItem("selected_station"); // <- prioritaire
 				const cached = await AsyncStorage.getItem("skiStationsData");
+
 				if (cached) {
-					console.warn("✅ Found cached station data.");
-					cachedData = JSON.parse(cached) as Station[];
-					setStations(cachedData);
+					cachedList = JSON.parse(cached) as Station[];
+					setStations(cachedList);
 					setDropdownItems(
-						cachedData.map((s) => ({
+						cachedList.map((s) => ({
 							label: s.name,
 							value: s.osmId,
 						}))
 					);
-					setSelectedStation(cachedData[0] || null);
-				} else {
-					console.warn("❌ No cached stations data found.");
-					const result = await fetchStations();
-					cachedData = result;
-					await AsyncStorage.setItem(
-						"skiStationsData",
-						JSON.stringify(result)
-					);
-					setStations(result);
-					setDropdownItems(
-						result.map((s) => ({ label: s.name, value: s.osmId }))
-					);
-					setSelectedStation(result[0] || null);
+					const bySaved = savedId
+						? cachedList.find(
+								(s) => String(s.osmId) === String(savedId)
+						  )
+						: null;
+					setSelectedStation(bySaved || cachedList[0] || null);
+					return;
 				}
-			} catch (error: any) {
-				console.error("❌ fetchStations failed:", error.message);
-				if (cachedData.length === 0) {
-					setStations([]);
-					setDropdownItems([]);
-					setSelectedStation(null);
-				}
+
+				// Pas de cache => fetch une fois
+				const result = await fetchStations();
+				cachedList = result;
+				await AsyncStorage.setItem(
+					"skiStationsData",
+					JSON.stringify(result)
+				);
+				setStations(result);
+				setDropdownItems(
+					result.map((s) => ({ label: s.name, value: s.osmId }))
+				);
+				const bySaved = savedId
+					? result.find((s) => String(s.osmId) === String(savedId))
+					: null;
+				setSelectedStation(bySaved || result[0] || null);
+			} catch (e: any) {
+				setStations([]);
+				setDropdownItems([]);
+				setSelectedStation(null);
+				console.error("❌ fetchStations failed:", e?.message || e);
 			} finally {
 				hasFetched.current = true;
 				isFetching.current = false;
@@ -65,11 +73,6 @@ export const useStations = (): UseStationsResult => {
 
 		getStations();
 	}, []);
-	useEffect(() => {
-		if (stations[0]) {
-			console.log("useStations[0]:", stations[0]);
-		}
-	}, [stations[0]]);
 
 	return {
 		stations,

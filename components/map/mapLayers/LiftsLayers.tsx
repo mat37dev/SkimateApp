@@ -25,6 +25,30 @@ export const LiftsLayers = ({
 					shape={liftLines}
 					onPress={onMapFeaturePress}
 				>
+					<MapboxGL.SymbolLayer
+						id='liftLineArrowLayer'
+						minZoomLevel={
+							MapStyleConfig.LiftArrowDistanceApparition
+						}
+						style={{
+							symbolSpacing:
+								MapStyleConfig.LiftArrowSymbolSpacing,
+							symbolPlacement:
+								MapStyleConfig.LiftArrowSymbolPlacement,
+							textField: MapStyleConfig.LiftArrowTextField,
+							textSize: MapStyleConfig.LiftArrowTextSize,
+							textColor: MapStyleConfig.LiftLineColor,
+							textOpacity: MapStyleConfig.LiftArrowTextOpacity,
+							textHaloWidth: MapStyleConfig.LiftArrowHaloWidth,
+							textHaloColor: MapStyleConfig.LiftArrowHaloColor,
+							textRotationAlignment:
+								MapStyleConfig.LiftArrowTextRotationAlignment,
+							textPitchAlignment:
+								MapStyleConfig.LiftArrowTextPitchAlignment,
+							textKeepUpright:
+								MapStyleConfig.LiftArrowTextKeepUpright,
+						}}
+					/>
 					<MapboxGL.LineLayer
 						id='liftLineLayer'
 						style={{
@@ -56,30 +80,6 @@ export const LiftsLayers = ({
 							textIgnorePlacement:
 								MapStyleConfig.LiftLabelTextIgnorePlacement,
 							textOpacity: MapStyleConfig.LiftLabelTextOpacity,
-						}}
-					/>
-					<MapboxGL.SymbolLayer
-						id='liftLineArrowLayer'
-						minZoomLevel={
-							MapStyleConfig.LiftArrowDistanceApparition
-						}
-						style={{
-							symbolSpacing:
-								MapStyleConfig.LiftArrowSymbolSpacing,
-							symbolPlacement:
-								MapStyleConfig.LiftArrowSymbolPlacement,
-							textField: MapStyleConfig.LiftArrowTextField,
-							textSize: MapStyleConfig.LiftArrowTextSize,
-							textColor: MapStyleConfig.LiftLineColor,
-							textOpacity: MapStyleConfig.LiftArrowTextOpacity,
-							textHaloWidth: MapStyleConfig.LiftArrowHaloWidth,
-							textHaloColor: MapStyleConfig.LiftArrowHaloColor,
-							textRotationAlignment:
-								MapStyleConfig.LiftArrowTextRotationAlignment,
-							textPitchAlignment:
-								MapStyleConfig.LiftArrowTextPitchAlignment,
-							textKeepUpright:
-								MapStyleConfig.LiftArrowTextKeepUpright,
 						}}
 					/>
 				</MapboxGL.ShapeSource>

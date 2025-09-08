@@ -8,7 +8,6 @@ import { StationsLayers } from "./mapLayers/StationsLayers";
 import { RunsLayers } from "@/components/map/mapLayers/RunsLayers";
 import { LiftsLayers } from "@/components/map/mapLayers/LiftsLayers";
 import { CitiesLabels } from "@/components/map/mapLabels/CitiesLabels";
-import { RouteLayers } from "@/components/map/mapLayers/RouteLayers";
 import { mapVariables } from "@/constants/map/mapConfigVariables";
 
 function getRunsAndLifts(assets: any) {
@@ -79,8 +78,6 @@ export function SkiMap({
 	showEasy,
 	showIntermediate,
 	showExpert,
-	gpsMode,
-	graphNodesGeoJson,
 }: SkiMapProps) {
 	const {
 		runsEasy,
@@ -102,34 +99,33 @@ export function SkiMap({
 		}
 	}, [onMapLoad]);
 
-	const handleMapIdle = (event: any) => {
-		const coords = event?.geometry?.coordinates;
-		if (!coords) return;
-		const [lng, lat] = coords;
-
-		if (
-			lng < mapVariables.BOUNDS.sw[0] ||
-			lng > mapVariables.BOUNDS.ne[0] ||
-			lat < mapVariables.BOUNDS.sw[1] ||
-			lat > mapVariables.BOUNDS.ne[1]
-		) {
-			mapCameraRef.current?.setCamera({
-				centerCoordinate: cameraCenter,
-				zoomLevel: mapVariables.DEFAULT_ZOOM_LEVEL,
-				pitch: is3D ? mapVariables.DEFAULT_PITCH_3D : 0,
-				animationMode: mapVariables.RECENTERING_ZOOM_ANIMATION_MODE,
-				duration: mapVariables.RECENTERING_ZOOM_DURATION,
-			});
-			console.log("Hors limites, recentrage sur :", cameraCenter);
-		}
-	};
+	const handleCameraChanged = useCallback(
+		(e: any) => {
+			const c = e?.properties?.center;
+			if (!c) return;
+			const [lng, lat] = Array.isArray(c) ? c : [c.lng, c.lat];
+			if (
+				lng < mapVariables.BOUNDS.sw[0] ||
+				lng > mapVariables.BOUNDS.ne[0] ||
+				lat < mapVariables.BOUNDS.sw[1] ||
+				lat > mapVariables.BOUNDS.ne[1]
+			) {
+				mapCameraRef.current?.setCamera({
+					centerCoordinate: cameraCenter,
+					animationMode: mapVariables.RECENTERING_ZOOM_ANIMATION_MODE,
+					duration: mapVariables.RECENTERING_ZOOM_DURATION,
+				});
+			}
+		},
+		[cameraCenter, is3D, mapCameraRef]
+	);
 
 	return (
 		<MapboxGL.MapView
 			key={1}
 			style={styles.map}
 			styleURL='mapbox://styles/baptlab/cm7kbr8wz008y01sb2hxsc5g9'
-			onMapIdle={handleMapIdle}
+			onMapIdle={handleCameraChanged}
 			onDidFinishLoadingMap={() => {
 				console.log("Map style loaded");
 				notifyLoad();
@@ -149,19 +145,17 @@ export function SkiMap({
 				}}
 			/>
 
-			{is3D && (
-				<MapboxGL.RasterDemSource
-					id='terrainSource'
-					tileUrlTemplates={[
-						process.env.MAPBOX_STYLE_URL ||
-							"https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A",
-					]}
-					tileSize={256}
-					maxZoomLevel={14}
-				>
-					<MapboxGL.Terrain style={{ exaggeration: 1.75 }} />
-				</MapboxGL.RasterDemSource>
-			)}
+			<MapboxGL.RasterDemSource
+				id='terrainSource'
+				tileUrlTemplates={[
+					process.env.MAPBOX_STYLE_URL ||
+						"https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=pk.eyJ1IjoiYmFwdGxhYiIsImEiOiJjbHdvcTEzc3cxM2NjMmlyem11ZHF4MWh2In0.KmT1eerA8ZSQaREGnkaN2A",
+				]}
+				tileSize={256}
+				maxZoomLevel={14}
+			>
+				<MapboxGL.Terrain style={{ exaggeration: 1.75 }} />
+			</MapboxGL.RasterDemSource>
 
 			{Array.isArray(routeFeature) &&
 				routeFeature.map((feature: any, index: number) => (
@@ -181,23 +175,6 @@ export function SkiMap({
 						/>
 					</MapboxGL.ShapeSource>
 				))}
-			{/* {graphNodesGeoJson && (
-				<MapboxGL.ShapeSource id='graphNodes' shape={graphNodesGeoJson}>
-					<MapboxGL.CircleLayer
-						id='graphNodesLayer'
-						style={{
-							circleRadius: 4,
-							circleColor: [
-								"case",
-								["==", ["get", "intersection"], true],
-								"orange", // couleur des intersections
-								"purple", // couleur des autres nœuds
-							],
-							circleOpacity: 0.9,
-						}}
-					/>
-				</MapboxGL.ShapeSource>
-			)} */}
 
 			<StationsLayers geoJson={stationGeoJson} />
 			<CitiesLabels stationCities={stationCities} />
@@ -222,11 +199,6 @@ export function SkiMap({
 				onMapFeaturePress={onMapFeaturePress}
 			/>
 
-			<RouteLayers
-				routeFeature={routeFeature}
-				belowLayerID={getLabelLayerId(selectedFeature)}
-			/>
-
 			{selectedFeature && (
 				<MapboxGL.ShapeSource
 					id='highlightSource'
@@ -240,58 +212,69 @@ export function SkiMap({
 					}
 				>
 					<MapboxGL.LineLayer
-						id='highlightLayer'
+						id='highlightLiftBackground'
+						belowLayerID='liftLineLabelLayer'
+						filter={["==", ["get", "category"], "lift"]}
+						style={{
+							lineColor: "white",
+							lineWidth: 3, // plus large
+							lineOpacity: 1,
+						}}
+					/>
+
+					<MapboxGL.LineLayer
+						id='highlightLiftForeground'
+						belowLayerID='liftLineLabelLayer'
+						filter={["==", ["get", "category"], "lift"]}
+						style={{
+							lineColor: "black",
+							lineWidth: 3.5, // un peu plus fin
+							lineDasharray: [2, 2], // pointillé noir
+							lineOpacity: 1,
+						}}
+					/>
+
+					<MapboxGL.LineLayer
+						id='highlightRunsLayer'
+						filter={["==", ["get", "category"], "run"]}
 						belowLayerID={getLabelLayerId(selectedFeature)}
 						style={{
-							lineColor: "blue",
-							lineWidth: 4,
+							lineColor: [
+								"match",
+								["get", "difficulty"],
+								"novice",
+								"green",
+								"easy",
+								"blue",
+								"intermediate",
+								"red",
+								"advanced",
+								"black",
+								"expert",
+								"black",
+								"nullDiff",
+								"grey",
+								"unknown",
+								"grey",
+								"grey",
+							],
+							lineWidth: 3.5,
 							lineOpacity: 1,
 						}}
 					/>
 				</MapboxGL.ShapeSource>
 			)}
 
-			{showDestinationPoint && destinationCoord && (
-				<MapboxGL.PointAnnotation
-					id='destinationPoint'
-					coordinate={destinationCoord}
-				>
-					<View style={styles.destinationIcon}>
-						<Text style={{ fontSize: 24 }}>🚩</Text>
-					</View>
-				</MapboxGL.PointAnnotation>
-			)}
-
-			{gpsMode && userLocation ? (
+			{userLocation && (
 				<MapboxGL.Camera
 					ref={mapCameraRef}
-					centerCoordinate={userLocation}
-					zoomLevel={18}
-					pitch={45}
+					pitch={is3D ? 70 : 0}
 					animationMode='flyTo'
 					animationDuration={1500}
 				/>
-			) : is3D ? (
-				<MapboxGL.Camera
-					ref={mapCameraRef}
-					zoomLevel={11}
-					centerCoordinate={cameraCenter}
-					pitch={70}
-				/>
-			) : (
-				<MapboxGL.Camera
-					ref={mapCameraRef}
-					zoomLevel={11}
-					centerCoordinate={cameraCenter}
-					pitch={0}
-				/>
 			)}
 
-			<MapboxGL.UserLocation
-				visible
-				showsUserHeadingIndicator={gpsMode}
-				androidRenderMode={gpsMode ? "compass" : "normal"}
-			/>
+			<MapboxGL.UserLocation visible />
 		</MapboxGL.MapView>
 	);
 }

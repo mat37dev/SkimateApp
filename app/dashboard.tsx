@@ -1,5 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Animated, StyleSheet, View, Text, TextInput, TouchableOpacity } from "react-native";
+import {
+	Animated,
+	StyleSheet,
+	View,
+	Text,
+	TextInput,
+	TouchableOpacity,
+} from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import CollapsibleHeader from "../components/CollapsibleHeader";
 import { Card } from "@/components/Card";
@@ -65,7 +72,9 @@ export default function DashboardScreen() {
 	useEffect(() => {
 		(async () => {
 			try {
-				const savedStation = await AsyncStorage.getItem("selected_station");
+				const savedStation = await AsyncStorage.getItem(
+					"selected_station"
+				);
 				if (savedStation) {
 					setSelectedStation(savedStation);
 				}
@@ -97,6 +106,53 @@ export default function DashboardScreen() {
 		}
 	};
 
+	//VERSION AVEC FETCH
+	/* const handleSearch = async (text: string) => {
+		setSearchTerm(text);
+		if (!text) {
+			setSearchResults([]);
+			return;
+		}
+
+		setIsSearching(true);
+		try {
+			try {
+				const res = await apiClient(
+					`/api/stations?q=${encodeURIComponent(text)}`,
+					{ method: "GET" }
+				);
+				setSearchResults(res);
+				console.log("Search via GET /api/stations");
+				return;
+			} catch {}
+
+			try {
+				const res = await apiClient(`/station/search`, {
+					method: "POST",
+					body: JSON.stringify({ q: text }),
+				});
+				setSearchResults(res);
+				console.log("Search via POST /station/search");
+				return;
+			} catch {}
+
+			const mock = [
+				{
+					osmId: "demo-123",
+					name: `Station démo (${text})`,
+					logo: null,
+				},
+				{ osmId: "demo-456", name: `Demo Peak (${text})`, logo: null },
+			];
+			setSearchResults(mock);
+			console.warn("Search fallback: mock used");
+		} catch (error) {
+			console.warn("Erreur lors de la recherche de stations:", error);
+		} finally {
+			setIsSearching(false);
+		}
+	}; */
+
 	// Fonction quand on clique sur une station proposée
 	const handleSelectStation = async (stationId: string) => {
 		await AsyncStorage.setItem("selected_station", stationId);
@@ -114,28 +170,54 @@ export default function DashboardScreen() {
 			<View style={[styles.container, { backgroundColor }]}>
 				<CollapsibleHeader scrollY={scrollY} title='Stations' />
 
-				<Animated.ScrollView contentContainerStyle={styles.scrollContent}>
+				<Animated.ScrollView
+					contentContainerStyle={styles.scrollContent}
+				>
 					<View style={[globalStyles.screenContainer]}>
 						{/* Barre de recherche */}
 						<View style={styles.searchContainer}>
 							<TextInput
-								style={[styles.searchInput, { color: textColor }]}
+								style={[
+									styles.searchInput,
+									{ color: textColor },
+								]}
 								placeholder='Rechercher une station'
 								placeholderTextColor='#aaa'
 								value={searchTerm}
 								onChangeText={handleSearch}
 							/>
-							{isSearching && <Text style={[styles.loadingText, { color: textColor }]}>Recherche...</Text>}
+							{isSearching && (
+								<Text
+									style={[
+										styles.loadingText,
+										{ color: textColor },
+									]}
+								>
+									Recherche...
+								</Text>
+							)}
 
 							{/* Liste des résultats (overlay absolu) */}
 							{searchResults.length > 0 && (
-								<View style={[styles.resultsContainer, { backgroundColor: backgroundColorCard }]}>
+								<View
+									style={[
+										styles.resultsContainer,
+										{
+											backgroundColor:
+												backgroundColorCard,
+										},
+									]}
+								>
 									{searchResults.map((station) => (
 										<StationListItem
 											key={station.osmId}
 											logo={station.logo || null}
 											text={station.name}
-											onPress={() => handleSelectStation(station.osmId)}
+											onPress={() =>
+												handleSelectStation(
+													station.osmId
+												)
+											}
 										/>
 									))}
 								</View>
@@ -144,7 +226,11 @@ export default function DashboardScreen() {
 
 						{/* Card de favoris */}
 						<Card>
-							<Text style={{ color: textColor, fontWeight: "bold" }}>Favoris</Text>
+							<Text
+								style={{ color: textColor, fontWeight: "bold" }}
+							>
+								Favoris
+							</Text>
 							{/* À remplir plus tard */}
 							<Text>Listes de vos stations favorites.</Text>
 						</Card>
@@ -166,11 +252,20 @@ export default function DashboardScreen() {
 			/>
 			<Animated.ScrollView
 				contentContainerStyle={styles.scrollContent}
-				onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+				onScroll={Animated.event(
+					[{ nativeEvent: { contentOffset: { y: scrollY } } }],
+					{ useNativeDriver: false }
+				)}
 				scrollEventThrottle={16}
 			>
 				{stationInfo && (
-					<Text style={[styles.domainText, { color: textColor }, { fontWeight: "bold" }]}>
+					<Text
+						style={[
+							styles.domainText,
+							{ color: textColor },
+							{ fontWeight: "bold" },
+						]}
+					>
 						<Ionicons name='location' size={24} color={textColor} />
 						{stationInfo.domain}
 					</Text>
@@ -185,8 +280,13 @@ export default function DashboardScreen() {
 					{/* etc. */}
 				</View>
 				<View style={[globalStyles.screenContainer]}>
-					<WeatherCard weatherToday={weatherToday} weatherTomorrow={weatherTomorrow} />
-					{stationInfo && <StationStatsCard stationInfo={stationInfo} />}
+					<WeatherCard
+						weatherToday={weatherToday}
+						weatherTomorrow={weatherTomorrow}
+					/>
+					{stationInfo && (
+						<StationStatsCard stationInfo={stationInfo} />
+					)}
 					{stationInfo && stationInfo.domain && (
 						<ListDomainStationsCard
 							domain={stationInfo.domain}
@@ -199,7 +299,10 @@ export default function DashboardScreen() {
 					)}
 
 					<CommentCard osmId={selectedStation} />
-					<CardContact website={stationInfo?.website} emergencyPhone={stationInfo?.emergencyPhone} />
+					<CardContact
+						website={stationInfo?.website}
+						emergencyPhone={stationInfo?.emergencyPhone}
+					/>
 				</View>
 			</Animated.ScrollView>
 		</View>

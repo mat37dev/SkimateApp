@@ -5,7 +5,7 @@ const styles = StyleSheet.create({
 	map: { flex: 1 },
 	mapStyleBtnContainer: {
 		position: "absolute",
-		bottom: 60,
+		bottom: 40,
 		right: 20,
 	},
 
@@ -104,7 +104,6 @@ const styles = StyleSheet.create({
 		backgroundColor: "#fff",
 		borderRadius: 16,
 		padding: 16,
-		height: "40%",
 		maxHeight: "70%",
 		marginBottom: 15,
 		marginRight: 10,
@@ -129,9 +128,25 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 	},
 
+	//BTN MODAL
+	btnModalContainer: {
+		zIndex: 1000,
+	},
+	btnModal: {
+		backgroundColor: "#fff",
+		borderRadius: 8,
+		padding: 12,
+		elevation: 2,
+	},
+	btnModalText: {
+		color: "#000",
+		fontSize: 16,
+		fontWeight: "bold",
+	},
+
 	userCenterBtnContainer: {
 		position: "absolute",
-		bottom: 180, // Above the 2D/3D button
+		bottom: 160, // Above the 2D/3D button
 		right: 20,
 		zIndex: 0,
 	},
@@ -151,7 +166,7 @@ const styles = StyleSheet.create({
 
 	centerCameraBtnContainer: {
 		position: "absolute",
-		bottom: 120, // Above the 2D/3D button
+		bottom: 100, // Above the 2D/3D button
 		right: 20,
 		zIndex: 0,
 	},
@@ -194,25 +209,6 @@ const styles = StyleSheet.create({
 		shadowRadius: 3,
 	},
 
-	clearCacheBtnContainer: {
-		position: "absolute",
-		bottom: 160, // Above the 2D/3D button
-		right: 20,
-		zIndex: 10,
-	},
-
-	clearCacheBtn: {
-		backgroundColor: "white", // White background
-		padding: 11,
-		borderRadius: 25,
-		alignItems: "center",
-		justifyContent: "center",
-		shadowColor: "#000",
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 4,
-		elevation: 5, // Adds shadow for Android
-	},
 	searchBarContainer: {
 		position: "absolute",
 		top: 40,

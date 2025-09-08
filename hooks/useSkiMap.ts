@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { preprocessFeatures, getGraph } from "@/hooks/calculateRoute";
 
 export function useSkiMap(assets: any) {
 	// State for search query and results
@@ -13,13 +12,17 @@ export function useSkiMap(assets: any) {
 		if (!assets) return;
 		const runsEasy = assets?.runs?.easy || { features: [] };
 		const runsNovice = assets?.runs?.novice || { features: [] };
-		const runsIntermediate = assets?.runs?.intermediate || { features: [] };
+		const runsIntermediate = assets?.runs?.intermediate || {
+			features: [],
+		};
 		const runsExpert = assets?.runs?.expert || { features: [] };
 		const runsNull = assets?.runs?.nullDiff || { features: [] };
 		const runsUnknown = assets?.runs?.unknown || { features: [] };
 
 		const liftLines = assets?.lifts?.liftLines || { features: [] };
-		const liftStartPoints = assets?.lifts?.liftStartPoints || { features: [] };
+		const liftStartPoints = assets?.lifts?.liftStartPoints || {
+			features: [],
+		};
 
 		const allRuns = [
 			...runsEasy.features,
@@ -29,21 +32,16 @@ export function useSkiMap(assets: any) {
 			...runsNull.features,
 			...runsUnknown.features,
 		].map((feature) => ({ ...feature, category: "run" }));
-		const allLifts = [...liftLines.features, ...liftStartPoints.features].map((feature) => ({
+
+		const allLifts = [
+			...liftLines.features,
+			...liftStartPoints.features,
+		].map((feature) => ({
 			...feature,
 			category: "lift",
 		}));
-		const combined = [...allRuns, ...allLifts];
-		const uniqueMap = new Map();
-		combined.forEach((feature) => {
-			const featureCategory = feature.category || feature.properties?.category;
-			const featureName = feature.properties?.name;
-			const key = featureCategory + "_" + featureName;
-			if (featureName && !uniqueMap.has(key)) {
-				uniqueMap.set(key, feature);
-			}
-		});
-		setCombinedList(Array.from(uniqueMap.values()));
+
+		setCombinedList([...allRuns, ...allLifts]);
 	}, [assets]);
 
 	// Search logic (with delay)
@@ -67,8 +65,6 @@ export function useSkiMap(assets: any) {
 	};
 
 	// Preprocess combinedList into simplified edges and build (or get cached) graph
-	const simplifiedEdges = useMemo(() => preprocessFeatures(combinedList), [combinedList]);
-	const memoizedGraph = useMemo(() => (simplifiedEdges.length > 0 ? getGraph(simplifiedEdges) : null), [simplifiedEdges]);
 
 	return {
 		searchQuery,
@@ -77,7 +73,5 @@ export function useSkiMap(assets: any) {
 		isSearching,
 		handleSearch,
 		combinedList,
-		simplifiedEdges,
-		memoizedGraph,
 	};
 }

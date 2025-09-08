@@ -1,91 +1,78 @@
 import styles from "@/styles/mapStyles";
-
 import React from "react";
 import { ScrollView, Text, View, TouchableOpacity } from "react-native";
 import { AppModal } from "@/components/AppModal";
 import { InfoModalProps } from "@/interfaces/logic/InfosModal";
+import { tr } from "@/constants/translations";
+
+type Props = InfoModalProps & { onClear?: () => void };
 
 export const InfoModal = ({
 	visible,
 	onClose,
 	selectedFeature,
-	onTravel,
-}: InfoModalProps) => {
+	onClear,
+}: Props) => {
 	if (!selectedFeature) return null;
 	const { properties = {} } = selectedFeature;
 	const { category, name, difficulty, tags = {} } = properties;
 	const isRun = category === "run";
 	const isLift = category === "lift";
-	const liftType = tags.aerialway || "unknown";
-	const runLit = tags.lit || "unknown";
-	const description = tags.description || tags.note || "unknown";
-	const openingHours = tags.opening_hours || "unknown";
+	const liftType = tr(tags.aerialway, "aerialway");
+	const runLit = tr(tags.lit, "lit");
+	const difficultyLabel = tr(difficulty, "difficulty");
+	const description = tags.description || tags.note || "Inconnu";
+	const openingHours = tags.opening_hours || "Inconnu";
 
 	return (
 		<AppModal visible={visible} onClose={onClose}>
 			<ScrollView>
 				<Text style={styles.modalTitle}>
-					{isRun ? "Ski Run Information" : "Lift Information"}
+					{isRun
+						? "Informations sur la piste"
+						: "Informations sur la remontée mécanique"}
 				</Text>
 				<Text style={styles.infoLine}>
-					<Text style={styles.infoLabel}>Name: </Text>
-					{name || "Unknown"}
+					<Text style={styles.infoLabel}>Nom : </Text>
+					{name || "Inconnu"}
 				</Text>
 				{isRun && (
 					<>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Difficulty: </Text>
-							{difficulty || "unknown"}
+							<Text style={styles.infoLabel}>Diffculté : </Text>
+							{difficultyLabel || "Inconnu"}
 						</Text>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Lit: </Text>
-							{runLit}
+							<Text style={styles.infoLabel}>Éclairage : </Text>
+							{runLit || "Inconnu"}
 						</Text>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Description: </Text>
-							{description}
+							<Text style={styles.infoLabel}>Description : </Text>
+							{description || "Inconnu"}
 						</Text>
 					</>
 				)}
 				{isLift && (
 					<>
 						<Text style={styles.infoLine}>
-							<Text style={styles.infoLabel}>Type: </Text>
+							<Text style={styles.infoLabel}>Type : </Text>
 							{liftType}
 						</Text>
 						<Text style={styles.infoLine}>
 							<Text style={styles.infoLabel}>
-								Opening Hours:{" "}
+								Horaires d'ouverture :{" "}
 							</Text>
-							{openingHours}
+							{openingHours || "Inconnu"}
 						</Text>
 						<Text style={styles.infoLine}>
 							<Text style={styles.infoLabel}>
-								Description / Note:{" "}
+								Description / Infos :{" "}
 							</Text>
-							{description}
+							{description || "Inconnu"}
 						</Text>
 					</>
 				)}
 			</ScrollView>
-			<View
-				style={{
-					flexDirection: "row",
-					justifyContent: "space-around",
-					marginVertical: 10,
-				}}
-			>
-				<TouchableOpacity
-					style={{
-						padding: 10,
-						backgroundColor: "#ddd",
-						borderRadius: 5,
-					}}
-					onPress={onTravel}
-				>
-					<Text>Travel to</Text>
-				</TouchableOpacity>
-			</View>
 		</AppModal>
 	);
 };

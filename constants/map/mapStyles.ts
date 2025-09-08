@@ -46,7 +46,7 @@ const MapStyleConfig = {
 
 	//Style des labels
 	RunLabelFontSize: 14, // Taille de la police des labels de course
-	RunLabelTextOpacity: 0.7, // Opacité du texte des labels de cours
+	RunLabelTextOpacity: 0.8, // Opacité du texte des labels de cours
 	RunLabelTextDistanceApparition: 13.5, // Distance d'apparition des labels de course
 	RunLabelHaloWidth: 4, // Largeur de l'auréole des labels
 	RunLabelHaloColor: "#fff", // Couleur de l'auréole des labels de course
@@ -60,7 +60,7 @@ const MapStyleConfig = {
 	RunArrowDistanceApparition: 15, // Distance d'apparition des flèches
 	RunArrowSymbolSpacing: 200, // Espacement des symboles de flèches
 	RunArrowTextField: "▶", // On utilise du texte pour les flèches ici, mais peut être remplacé par une icône si nécessaire
-	RunArrowTextSize: 30, // Taille du texte des flèches de direction
+	RunArrowTextSize: 31, // Taille du texte des flèches de direction
 	RunArrowHaloWidth: 0, // Largeur de l'auréole des flèches
 	RunArrowHaloColor: "#ffffff", // Couleur de l'auréole des flèches
 	RunArrowTextOpacity: 1, // Opacité des flèches
@@ -78,10 +78,10 @@ const MapStyleConfig = {
 
 	// Style des labels
 	LiftLabelFontSize: 14, // Taille du texte des labels
-	LiftLabelTextOpacity: 0.7, // Opacité du texte
+	LiftLabelTextOpacity: 0.8, // Opacité du texte
 	LiftLabelTextDistanceApparition: 13.5, // Distance d'apparition des labels
 	LiftLabelColor: "#000", // Couleur du texte
-	LiftLabelHaloWidth: 3, // Largeur de l'auréole
+	LiftLabelHaloWidth: 4, // Largeur de l'auréole
 	LiftLabelHaloColor: "#fff", // Couleur de l'auréole
 	LiftLabelAllowOverlap: true, // Permettre chevauchement des labels
 	LiftLabelTextFont: "Open Sans Bold", // Police du label
