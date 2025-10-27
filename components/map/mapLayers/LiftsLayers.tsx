@@ -9,22 +9,29 @@ interface Props {
 	onMapFeaturePress: (e: any) => void;
 }
 
+// 🚡 Affiche les remontées mécaniques sur la carte (télésièges, téléskis, etc.)
+// Composée de deux ShapeSource :
+// 1️⃣ liftLines → pour les tracés (lignes de câbles + flèches + noms)
+// 2️⃣ liftStartPoints → pour les icônes représentant le type de remontée
 export const LiftsLayers = ({
 	showLifts,
 	liftLines,
 	liftStartPoints,
 	onMapFeaturePress,
 }: Props) => {
+	// ❌ Si l’utilisateur masque les remontées, on ne rend rien pour alléger la carte
 	if (!showLifts) return null;
 
 	return (
 		<>
+			{/* ==================== LIGNES DES REMONTÉES ==================== */}
 			{liftLines.features.length > 0 && (
 				<MapboxGL.ShapeSource
 					id='liftLineSource'
 					shape={liftLines}
-					onPress={onMapFeaturePress}
+					onPress={onMapFeaturePress} // 🔍 Active la sélection sur une ligne
 				>
+					{/* ➡️ Flèches directionnelles sur les câbles */}
 					<MapboxGL.SymbolLayer
 						id='liftLineArrowLayer'
 						minZoomLevel={
@@ -49,6 +56,8 @@ export const LiftsLayers = ({
 								MapStyleConfig.LiftArrowTextKeepUpright,
 						}}
 					/>
+
+					{/* 🎢 Tracé principal de la ligne de remontée */}
 					<MapboxGL.LineLayer
 						id='liftLineLayer'
 						style={{
@@ -58,6 +67,8 @@ export const LiftsLayers = ({
 							lineOpacity: MapStyleConfig.LiftLineOpacity,
 						}}
 					/>
+
+					{/* 🏷️ Nom de la remontée (ex : "Télésiège du Glacier") */}
 					<MapboxGL.SymbolLayer
 						id='liftLineLabelLayer'
 						minZoomLevel={
@@ -85,12 +96,14 @@ export const LiftsLayers = ({
 				</MapboxGL.ShapeSource>
 			)}
 
+			{/* ==================== ICÔNES DES POINTS DE DÉPART ==================== */}
 			{liftStartPoints.features.length > 0 && (
 				<MapboxGL.ShapeSource
 					id='liftStartPointsSource'
 					shape={liftStartPoints}
 					onPress={onMapFeaturePress}
 				>
+					{/* 🪧 Affiche l’icône correspondant au type de remontée (tapis, télécabine, etc.) */}
 					<MapboxGL.SymbolLayer
 						id='liftStartPointsLayer'
 						minZoomLevel={MapStyleConfig.LiftIconDistanceApparition}

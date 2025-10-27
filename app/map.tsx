@@ -18,21 +18,26 @@ import { useSkiMap } from "@/hooks/useSkiMap";
 import { centerOnStation, setCameraToCoordinates } from "@/hooks/useCamera";
 import { LoadingModal } from "@/components/Modals/LoadingModal";
 import { useUserLocation } from "@/hooks/useUserLocation";
-import { mapVariables } from "@/constants/map/mapConfigVariables";
+import { mapVariables } from "@/constants/map/mapCameraVariable";
 
+// 🗺️ Composant principal de la page de la carte.
+// Gère : affichage Mapbox, modales, recherche, filtres, sélection d’éléments, centrage de la caméra, etc.
 export default function map() {
 	const backgroundColor = useThemeColor({}, "background");
-	const mapCameraRef = useRef<any>(null);
+	const mapCameraRef = useRef<any>(null); // Référence pour contrôler la caméra Mapbox
 
+	// 🧭 États principaux liés à la carte
 	const [isSearching, setIsSearching] = useState(false);
 	const [routeFeature, setRouteFeature] = useState<any>(null);
 	const [mapReady, setMapReady] = useState(false);
 
+	// 📍 Localisation de l’utilisateur mise à jour en temps réel
 	const { location: userLocation } = useUserLocation({
 		distanceFilter: 10,
 		interval: 5000,
 	});
 
+	// 🎿 Chargement de la liste des stations depuis l’API ou le cache
 	const {
 		stations,
 		dropdownItems,
@@ -41,6 +46,7 @@ export default function map() {
 		isLoading: stationsLoading,
 	} = useStations();
 
+	// 🗺️ Chargement des données complètes d’une station (pistes, remontées, villes, limites)
 	const {
 		stationCities,
 		stationCoordinates,
@@ -48,8 +54,10 @@ export default function map() {
 		isLoading: stationDataLoading,
 	} = useStationData(selectedStation);
 
+	// ⏳ État de chargement global
 	const loading = stationsLoading || stationDataLoading || !mapReady;
 
+	// 🔍 Gestion de la recherche d’éléments sur la carte
 	const {
 		searchQuery,
 		setSearchQuery,
@@ -59,11 +67,13 @@ export default function map() {
 		combinedList,
 	} = useSkiMap(assets);
 
-	const [open, setOpen] = useState(false);
-	const [is3D, setIs3D] = useState(true);
+	// 🎛️ États divers pour l’interface
+	const [open, setOpen] = useState(false); // Menu déroulant des stations
+	const [is3D, setIs3D] = useState(true); // Mode 2D / 3D
 	const toggleMapStyle = () => setIs3D((prev) => !prev);
-	const filterModal = useModal();
+	const filterModal = useModal(); // Hook custom pour la modale de filtres
 
+	// 🎚️ Filtres d’affichage
 	const [showRuns, setShowRuns] = useState(true);
 	const [showLifts, setShowLifts] = useState(true);
 	const [showNovice, setShowNovice] = useState(true);
@@ -75,23 +85,25 @@ export default function map() {
 		null
 	);
 
+	// 🧾 États liés à la sélection et aux modales
 	const [infoModalVisible, setInfoModalVisible] = useState(false);
 	const [selectedFeature, setSelectedFeature] = useState<any>(null);
 	const [searchModalVisible, setSearchModalVisible] = useState(false);
 
+	// 🗺️ GeoJSON contenant les limites de la station
 	const stationGeoJson: { type: string; features: any[] } =
 		stationCoordinates ?? { type: "FeatureCollection", features: [] };
 
-	const didCenterRef = useRef(false);
+	const didCenterRef = useRef(false); // Sert à éviter un double centrage à l’ouverture
 
+	// ==================== INITIALISATION ====================
 	useEffect(() => {
+		// 🔍 Affiche les clés en cache (debug)
 		const checkStorage = async () => {
 			try {
 				const keys = await AsyncStorage.getAllKeys();
 				if (keys.length > 0) {
 					console.log("Keys in cache:", keys);
-
-					// Exemple : afficher juste les tailles par catégorie
 					const entries = await AsyncStorage.multiGet(keys);
 					entries.forEach(([key, value]) => {
 						console.log(
@@ -102,8 +114,6 @@ export default function map() {
 							entries.find(([k]) => k === "selected_station")?.[1]
 						);
 					});
-				} else {
-					console.log("No data in AsyncStorage");
 				}
 			} catch (err) {
 				console.error("Error reading AsyncStorage:", err);
@@ -111,15 +121,17 @@ export default function map() {
 		};
 
 		checkStorage();
-
 		MapboxGL.setAccessToken(process.env.MAPBOX_ACCESS_TOKEN);
 	}, []);
 
+	// ==================== CENTRAGE INITIAL SUR UTILISATEUR ====================
 	useEffect(() => {
 		if (!mapReady) return;
 		if (didCenterRef.current) return;
 		if (!userLocation) return;
 		didCenterRef.current = true;
+
+		// 🎯 Centre la caméra sur la position GPS actuelle lors du premier chargement
 		mapCameraRef.current?.setCamera({
 			centerCoordinate: userLocation,
 			zoomLevel: 14,
@@ -129,12 +141,14 @@ export default function map() {
 		});
 	}, [mapReady, userLocation, is3D]);
 
+	// 🔧 Fonction utilitaire pour vider le cache local
 	const clearStorage = async () => {
 		try {
 			await AsyncStorage.clear();
 		} catch {}
 	};
 
+	// ==================== CENTRAGE SUR LA STATION ====================
 	useEffect(() => {
 		if (!mapReady || !selectedStation) return;
 		centerOnStation(
@@ -144,10 +158,12 @@ export default function map() {
 		);
 	}, [mapReady, selectedStation?.osmId]);
 
+	// ==================== COORDONNÉES PAR DÉFAUT ====================
 	const cameraCenter = selectedStation
 		? [Number(selectedStation.longitude), Number(selectedStation?.latitude)]
-		: [6.7483232, 45.5203648];
+		: [6.7483232, 45.5203648]; // fallback
 
+	// ==================== CHANGEMENT DE STATION ====================
 	const handleStationChange = (osmId: string) => {
 		const station = stations.find((s) => String(s.osmId) === String(osmId));
 		if (station) {
@@ -156,27 +172,31 @@ export default function map() {
 		console.log("Selected station:", station);
 	};
 
+	// ==================== SÉLECTION D'UN ÉLÉMENT SUR LA CARTE ====================
 	const handleFeatureSelect = (feature: any) => {
 		setSearchModalVisible(false);
 		const fullRun = combinedList.find((item) => item.id === feature.id);
 		const highlightGeom = fullRun || feature;
+
 		let targetCoord: number[] | null = null;
 		if (feature.geometry.type === "LineString") {
 			const coords = feature.geometry.coordinates;
-			targetCoord = coords[Math.floor(coords.length / 2)];
+			targetCoord = coords[Math.floor(coords.length / 2)]; // 🧭 centre de la piste
 		} else if (feature.geometry.type === "Point") {
 			targetCoord = feature.geometry.coordinates;
 		} else {
 			return;
 		}
+
 		setSelectedFeature(highlightGeom);
 		setRouteFeature(null);
 		if (mapCameraRef.current && targetCoord) {
 			setCameraToCoordinates(mapCameraRef, targetCoord);
 		}
-		setInfoModalVisible(true);
+		setInfoModalVisible(true); // Ouvre la modale d’infos
 	};
 
+	// ==================== HANDLERS ====================
 	const handleSearchItemPress = (feature: any) => {
 		handleFeatureSelect(feature);
 	};
@@ -192,8 +212,10 @@ export default function map() {
 		setRouteFeature(null);
 	};
 
+	// ==================== RENDU ====================
 	return (
 		<View style={[styles.container, { backgroundColor }]}>
+			{/* 🏔️ Sélecteur de station */}
 			<View style={styles.selectContainer}>
 				<DropDownPicker
 					open={open}
@@ -205,7 +227,6 @@ export default function map() {
 							typeof callback === "function"
 								? callback(selectedStation?.osmId)
 								: callback;
-						console.log("Station changed to:", osmId);
 						handleStationChange(osmId);
 					}}
 					setItems={() => {}}
@@ -215,6 +236,7 @@ export default function map() {
 				/>
 			</View>
 
+			{/* 💾 Modales principales */}
 			<LoadingModal visible={loading} onClose={() => {}} />
 			<FilterModal
 				visible={filterModal.visible}
@@ -250,6 +272,7 @@ export default function map() {
 				onSearchItemPress={handleSearchItemPress}
 			/>
 
+			{/* 🔍 Barre de recherche (ouvre la SearchModal) */}
 			<View style={styles.searchBarContainer}>
 				<TouchableOpacity
 					style={styles.searchBar}
@@ -261,11 +284,13 @@ export default function map() {
 				</TouchableOpacity>
 			</View>
 
+			{/* 🗺️ Carte principale */}
 			<SkiMap
 				cameraCenter={userLocation || cameraCenter}
 				is3D={is3D}
 				onMapLoad={() => {
 					setMapReady(true);
+					// 🧭 Si l’utilisateur n’a pas de position, centre sur la station
 					if (!userLocation && selectedStation) {
 						mapCameraRef.current?.setCamera({
 							centerCoordinate: [
@@ -299,6 +324,7 @@ export default function map() {
 				showExpert={showExpert}
 			/>
 
+			{/* 🎯 Boutons flottants de contrôle de la carte */}
 			<View style={styles.centerCameraBtnContainer}>
 				<RoundedButton
 					onPress={() =>
@@ -317,6 +343,7 @@ export default function map() {
 				</RoundedButton>
 			</View>
 
+			{/* 📍 Bouton pour centrer sur la position GPS */}
 			<View style={styles.userCenterBtnContainer}>
 				<RoundedButton
 					disabled={!userLocation}
@@ -337,6 +364,7 @@ export default function map() {
 				</RoundedButton>
 			</View>
 
+			{/* 🧭 Bouton pour passer de 2D à 3D */}
 			<View style={styles.mapStyleBtnContainer}>
 				<RoundedButton onPress={toggleMapStyle}>
 					<Text style={styles.mapStyleBtnText}>
@@ -345,12 +373,14 @@ export default function map() {
 				</RoundedButton>
 			</View>
 
+			{/* ☑️ Bouton pour ouvrir le menu des filtres */}
 			<View style={styles.filterBtnContainer}>
 				<RoundedButton onPress={filterModal.openModal}>
 					<Text style={styles.filterBtnText}>≡</Text>
 				</RoundedButton>
 			</View>
 
+			{/* ℹ️ Boutons contextuels affichés après la sélection d’un élément */}
 			{!!selectedFeature && !infoModalVisible && (
 				<View style={{ position: "absolute", bottom: 40, left: 20 }}>
 					<RoundedButton onPress={() => setInfoModalVisible(true)}>

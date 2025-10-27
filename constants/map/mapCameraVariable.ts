@@ -16,11 +16,14 @@ export const mapVariables = {
 	FOLLOW_PITCH: 45,
 	FOLLOW_ZOOM_LEVEL: 18,
 
-    //Recentering camera configuration
+	//Recentering camera configuration
 	RECENTERING_ZOOM_ANIMATION_MODE: "flyTo", // Mode d'animation pour recentrer la caméra
 	RECENTERING_ZOOM_DURATION: 1000, // Durée de l'animation de recentrage en millisecondes
 
-    // Configuration pour le bouton de zoom
-    BTN_ZOOM_LEVEL: 15, // Niveau de zoom pour le bouton de zoom
-    BTN_ZOOM_DURATION: 1000, // Durée de l'animation de zoom en millisecondes
+	// Configuration pour le bouton de zoom
+	BTN_ZOOM_LEVEL: 15, // Niveau de zoom pour le bouton de zoom
+	BTN_ZOOM_DURATION: 1000, // Durée de l'animation de zoom en millisecondes
+
+	MIN_ZOOM_LEVEL: 9, // limite de dézoom
+	MAX_ZOOM_LEVEL: 18, // limite de zoom
 };

@@ -9,11 +9,14 @@ import {
 } from "@/interfaces/datas/StationData";
 import type { FeatureCollection, Point } from "geojson";
 
+// 🎿 Hook principal chargé de récupérer et de gérer toutes les données liées à une station donnée.
+// Il combine le téléchargement depuis l’API et la mise en cache locale via AsyncStorage.
 export const useStationData = (
 	station: Station | null
 ): UseStationDataResult & {
 	stationCities: FeatureCollection<Point, { name: string }> | null;
 } => {
+	// 📦 États principaux
 	const [stationData, setStationData] = useState<Station | null>(null);
 	const [stationGeoJson, setStationGeoJson] = useState<FeatureCollection<
 		Point,
@@ -28,13 +31,14 @@ export const useStationData = (
 	> | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const isFetching = useRef(false);
+	const isFetching = useRef(false); // Empêche les appels API simultanés
 	const emptyFC: FeatureCollection = {
 		type: "FeatureCollection",
 		features: [],
 	};
 
-	// Ajoute des IDs basés sur properties.osmId ou index si absent
+	// 🆔 Génère des identifiants uniques pour chaque Feature du GeoJSON
+	// utile pour éviter les conflits d’ID lors du rendu des couches Mapbox.
 	const injectUniqueId = <T extends FeatureCollection<any, any>>(fc: T): T =>
 		({
 			...fc,
@@ -44,7 +48,6 @@ export const useStationData = (
 					difficulty = "none",
 					name = "",
 				} = feature.properties || {};
-				// Construit un id unique : catégorie–osmId–difficulty
 				const osmId = String(
 					feature.properties?.osmId ?? feature.id ?? idx
 				);
@@ -60,11 +63,14 @@ export const useStationData = (
 			}),
 		} as T);
 
+	// ==================== RÉCUPÉRATION DES DONNÉES ====================
 	useEffect(() => {
 		if (!station || isFetching.current) return;
+
 		const getStationData = async () => {
 			isFetching.current = true;
 
+			// 🧠 Génération de clés uniques pour le cache local
 			const geoKey = `stationGeoJson-${station.osmId}`;
 			const delimKey = `stationsDelimitations-${station.osmId}`;
 			const runsKey = `stationRuns-${station.osmId}`;
@@ -72,6 +78,7 @@ export const useStationData = (
 			const citiesKey = `stationCities-${station.osmId}`;
 
 			try {
+				// 📦 Récupération depuis le cache local si possible
 				const [geoJSON, delimJSON, runsJSON, liftsJSON, citiesJSON] =
 					await Promise.all([
 						AsyncStorage.getItem(geoKey),
@@ -81,11 +88,11 @@ export const useStationData = (
 						AsyncStorage.getItem(citiesKey),
 					]);
 
-				let storedGeo: FeatureCollection<Point, any>;
-				let storedDelimitations: StationCoordinates;
-				let rawRuns: any;
-				let rawLifts: any;
-				let citiesGeoJson: FeatureCollection<Point, { name: string }>;
+				let storedGeo,
+					storedDelimitations,
+					rawRuns,
+					rawLifts,
+					citiesGeoJson;
 
 				if (
 					geoJSON &&
@@ -94,12 +101,14 @@ export const useStationData = (
 					liftsJSON &&
 					citiesJSON
 				) {
+					// ✅ Lecture depuis le cache
 					storedGeo = injectUniqueId(JSON.parse(geoJSON));
 					storedDelimitations = JSON.parse(delimJSON);
 					rawRuns = JSON.parse(runsJSON);
 					rawLifts = JSON.parse(liftsJSON);
 					citiesGeoJson = JSON.parse(citiesJSON);
 				} else {
+					// 🌐 Téléchargement depuis l’API si non présent dans le cache
 					const fetched = await fetchStationCoordinates(
 						station.domain,
 						station.osmId
@@ -112,7 +121,7 @@ export const useStationData = (
 					const liftsFc = fetched.lifts || {};
 					citiesGeoJson = fetched.allCities;
 
-					// après fetch ou lecture du cache
+					// 🧩 Attribution d’IDs uniques aux sous-catégories
 					const runsWithIds = {
 						easy: injectUniqueId(runsFc.easy ?? emptyFC),
 						novice: injectUniqueId(runsFc.novice ?? emptyFC),
@@ -134,6 +143,7 @@ export const useStationData = (
 					rawRuns = runsWithIds;
 					rawLifts = liftsWithIds;
 
+					// 💾 Mise en cache pour usage futur (mode offline)
 					await AsyncStorage.multiSet([
 						[geoKey, JSON.stringify(storedGeo)],
 						[delimKey, JSON.stringify(storedDelimitations)],
@@ -143,6 +153,7 @@ export const useStationData = (
 					]);
 				}
 
+				// ✅ Mise à jour des états
 				setStationData(station);
 				setStationGeoJson(storedGeo);
 				setStationCoordinates(storedDelimitations);
@@ -159,6 +170,7 @@ export const useStationData = (
 		getStationData();
 	}, [station]);
 
+	// 🧾 Retourne toutes les données de la station prête à être utilisées dans SkiMap
 	return {
 		stationData,
 		stationGeoJson,

@@ -3,7 +3,7 @@ import React from "react";
 import { ScrollView, Text, View, TouchableOpacity } from "react-native";
 import { AppModal } from "@/components/AppModal";
 import { InfoModalProps } from "@/interfaces/logic/InfosModal";
-import { tr } from "@/constants/translations";
+import { tr } from "@/constants/map/translations";
 
 type Props = InfoModalProps & { onClear?: () => void };
 

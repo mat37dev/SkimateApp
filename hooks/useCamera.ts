@@ -1,7 +1,12 @@
 import type { RefObject } from "react";
 
+// 🔧 Type utilitaire pour référencer la caméra Mapbox
 export interface CameraRef extends RefObject<any> {}
 
+// 🎯 Centre la caméra sur la station actuelle
+// - Définit le centre de la vue
+// - Ajuste le zoom et la durée d’animation
+// - Appelé notamment au changement de station
 export function centerOnStation(
 	mapCameraRef: CameraRef,
 	longitude: number,
@@ -17,6 +22,8 @@ export function centerOnStation(
 	});
 }
 
+// 📍 Centre la caméra sur la position GPS de l’utilisateur
+// - Utilisé lors du clic sur le bouton "centrer sur moi"
 export function centerOnUser(
 	mapCameraRef: CameraRef,
 	userLocation: [number, number] | null,
@@ -30,6 +37,8 @@ export function centerOnUser(
 	});
 }
 
+// 🔄 Réinitialise la caméra en vue 2D sur la station
+// - Met le pitch à 0 pour repasser en vue plane
 export function resetToStation2D(
 	mapCameraRef: CameraRef,
 	longitude: number,
@@ -43,6 +52,7 @@ export function resetToStation2D(
 	});
 }
 
+// 🧭 Déplace la caméra vers des coordonnées précises (ex: piste ou remontée sélectionnée)
 export function setCameraToCoordinates(
 	mapCameraRef: CameraRef,
 	destinationCoord: [number, number],

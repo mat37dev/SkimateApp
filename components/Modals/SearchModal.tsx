@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { AppModal } from "@/components/AppModal";
 import { SearchModalProps } from "@/interfaces/logic/SearchModal";
-import { tr } from "@/constants/translations";
+import { tr } from "@/constants/map/translations";
 
 export const SearchModal = ({
 	visible,

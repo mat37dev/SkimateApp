@@ -2,18 +2,21 @@ import { useState, useEffect } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import Geolocation from "@react-native-community/geolocation";
 
-// Extract the correct types from the default export
 type GeoOptions = Geolocation.GeolocationOptions;
 type GeoPosition = Geolocation.GeolocationResponse;
-
+// 🎯 Hook de gestion de la position GPS utilisateur (version native Android/iOS)
+// - Gère les permissions
+// - Récupère la position actuelle
+// - Met à jour en continu la localisation de l’utilisateur
 export function useUserLocation(options: GeoOptions = {}) {
-	const fallback: [number, number] = [4.6483232, 45.4903648];
+	const fallback: [number, number] = [4.6483232, 45.4903648]; // 🧭 Coordonnées par défaut (fallback)
 	const [location, setLocation] = useState<[number, number] | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let watchId: number | null = null;
 
+		// 🪪 Fonction interne pour demander la permission Android
 		async function requestPermission() {
 			if (Platform.OS === "android") {
 				const granted = await PermissionsAndroid.request(
@@ -36,7 +39,7 @@ export function useUserLocation(options: GeoOptions = {}) {
 				return;
 			}
 
-			// 2) grab a one-off fix immediately
+			// 🧭 Récupération ponctuelle initiale
 			Geolocation.getCurrentPosition(
 				(pos) => {
 					setLocation([pos.coords.longitude, pos.coords.latitude]);
@@ -52,7 +55,7 @@ export function useUserLocation(options: GeoOptions = {}) {
 				}
 			);
 
-			// 3) then subscribe for real-time updates
+			// 🔁 Suivi en temps réel avec Geolocation.watchPosition
 			watchId = Geolocation.watchPosition(
 				(pos) => {
 					setLocation([pos.coords.longitude, pos.coords.latitude]);
@@ -63,14 +66,15 @@ export function useUserLocation(options: GeoOptions = {}) {
 				},
 				{
 					enableHighAccuracy: true,
-					distanceFilter: 5,
-					interval: 5000,
+					distanceFilter: 5, // déclenche tous les 5 mètres
+					interval: 5000, // ou toutes les 5 secondes
 					fastestInterval: 2000,
 					...options,
 				}
 			);
 		})();
 
+		// 🧹 Nettoyage à la désactivation du composant
 		return () => {
 			if (watchId !== null) {
 				Geolocation.clearWatch(watchId);
@@ -81,9 +85,11 @@ export function useUserLocation(options: GeoOptions = {}) {
 	return { location, error };
 }
 
+// 📦 Fonction utilitaire pour récupérer la position actuelle une seule fois (Promise)
 export async function getLocation(): Promise<[number, number] | null> {
 	console.log("trying to log location");
-	// Android runtime permission
+
+	// 🔐 Vérification permission Android
 	if (Platform.OS === "android") {
 		const granted = await PermissionsAndroid.request(
 			PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -99,8 +105,9 @@ export async function getLocation(): Promise<[number, number] | null> {
 			return null;
 		}
 	}
-	// Wrap the callback API in a Promise:
-	return new Promise((resolve, reject) => {
+
+	// 🔄 Retourne la position actuelle via Promise
+	return new Promise((resolve) => {
 		Geolocation.getCurrentPosition(
 			({ coords }) => {
 				const loc: [number, number] = [
@@ -115,7 +122,7 @@ export async function getLocation(): Promise<[number, number] | null> {
 			},
 			(error) => {
 				console.error("Failed to get location:", error.message);
-				resolve(null); // or reject(error)
+				resolve(null);
 			},
 			{
 				enableHighAccuracy: true,

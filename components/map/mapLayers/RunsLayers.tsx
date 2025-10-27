@@ -2,6 +2,9 @@ import React from "react";
 import MapboxGL from "@rnmapbox/maps";
 import MapStyleConfig from "@/constants/map/mapStyles";
 
+// 🎿 Affiche toutes les pistes de ski classées par niveau de difficulté.
+// Chaque groupe (verte, bleue, rouge, noire, etc.) correspond à une ShapeSource
+// avec trois calques : flèches, ligne, et label.
 interface Props {
 	showRuns: boolean;
 	showNovice: boolean;
@@ -33,6 +36,11 @@ export const RunsLayers = ({
 }: Props) => {
 	if (!showRuns) return null;
 
+	// 🎨 Fonction interne réutilisable pour éviter la duplication.
+	// Génère dynamiquement les trois couches d'une catégorie de piste :
+	// 1. Flèches directionnelles
+	// 2. Tracé de la piste
+	// 3. Label du nom de la piste
 	const runLayers = (
 		shapeId: string,
 		lineId: string,
@@ -46,12 +54,14 @@ export const RunsLayers = ({
 				f.properties.orientation &&
 				!["unknown", "flat"].includes(f.properties.orientation)
 		);
+
 		return (
 			<MapboxGL.ShapeSource
 				id={shapeId}
 				shape={shapeData}
 				onPress={onMapFeaturePress}
 			>
+				{/* 🧭 Flèches indiquant la direction de la piste */}
 				{hasArrow && (
 					<MapboxGL.SymbolLayer
 						id={arrowId}
@@ -75,6 +85,8 @@ export const RunsLayers = ({
 						}}
 					/>
 				)}
+
+				{/* 🎢 Tracé coloré de la piste */}
 				<MapboxGL.LineLayer
 					id={lineId}
 					style={{
@@ -84,6 +96,7 @@ export const RunsLayers = ({
 					}}
 				/>
 
+				{/* 🏷️ Nom de la piste */}
 				<MapboxGL.SymbolLayer
 					id={labelId}
 					minZoomLevel={MapStyleConfig.RunLabelTextDistanceApparition}
@@ -107,6 +120,7 @@ export const RunsLayers = ({
 		);
 	};
 
+	// 🧩 Rend dynamiquement toutes les couches actives selon les filtres utilisateur
 	return (
 		<>
 			{showEasy &&
@@ -145,6 +159,8 @@ export const RunsLayers = ({
 					"runExpertArrowLayer",
 					runsExpert
 				)}
+
+			{/* ⚪ Catégories spéciales : pistes non définies ou inconnues */}
 			{runLayers(
 				"runNullSource",
 				"runNullLayer",
@@ -164,5 +180,3 @@ export const RunsLayers = ({
 		</>
 	);
 };
-
-export default RunsLayers;

@@ -40,3 +40,4 @@ app-example
 .idea/vcs.xml
 .idea/workspace.xml
 /.idea/
+api/apiClient.ts
